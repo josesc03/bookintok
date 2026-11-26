@@ -1,0 +1,60 @@
+# Runs the whole backend: docker compose up --build
+# Copy .env.example to .env first.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: bookintok
+      POSTGRES_USER: ${POSTGRES_USER:-bookintok}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d bookintok"]
+      interval: 5s
+      retries: 10
+
+  mongo:
+    image: mongo:8
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build:
+      context: backend
+      dockerfile: api/Dockerfile
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/bookintok
+      DB_USER: ${POSTGRES_USER:-bookintok}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:?set FIREBASE_PROJECT_ID in .env}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  chat-service:
+    build:
+      context: backend
+      dockerfile: chat-service/Dockerfile
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DATABASE: bookintok_chat
+      API_BASE_URL: http://api:8080
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+    ports:
+      - "8081:8081"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+volumes:
+  postgres-data:
+  mongo-data:
