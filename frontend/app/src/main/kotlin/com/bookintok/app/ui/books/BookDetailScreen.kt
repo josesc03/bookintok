@@ -122,12 +122,14 @@ fun BookDetailScreen(
             Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            AsyncImage(
-                model = book.imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxWidth().height(240.dp),
-            )
+            if (book.imageUrl != null) {
+                AsyncImage(
+                    model = book.imageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxWidth().height(240.dp),
+                )
+            }
             Text(book.title, style = MaterialTheme.typography.headlineSmall)
             Text(book.author, style = MaterialTheme.typography.titleMedium)
             Text(

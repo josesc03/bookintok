@@ -2,7 +2,8 @@ package com.bookintok.app.ui.books
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -111,6 +112,7 @@ class BookEditorViewModel @Inject constructor(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BookEditorScreen(onSaved: (Long) -> Unit, viewModel: BookEditorViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -134,7 +136,7 @@ fun BookEditorScreen(onSaved: (Long) -> Unit, viewModel: BookEditorViewModel = h
             modifier = Modifier.fillMaxWidth(),
         )
         Text("Estado", style = MaterialTheme.typography.titleSmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             BookCondition.entries.forEach { condition ->
                 FilterChip(
                     selected = form.condition == condition,
@@ -144,7 +146,7 @@ fun BookEditorScreen(onSaved: (Long) -> Unit, viewModel: BookEditorViewModel = h
             }
         }
         Text("Cubierta", style = MaterialTheme.typography.titleSmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CoverType.entries.forEach { cover ->
                 FilterChip(
                     selected = form.coverType == cover,
