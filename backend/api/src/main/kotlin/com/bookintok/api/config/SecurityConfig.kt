@@ -19,7 +19,7 @@ class SecurityConfig {
             .csrf { it.disable() } // stateless API without cookies
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests {
-                it.requestMatchers("/actuator/health/**", "/docs/**", "/v3/api-docs/**").permitAll()
+                it.requestMatchers("/actuator/health/**", "/docs", "/docs/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 it.anyRequest().authenticated()
             }
             .oauth2ResourceServer { it.jwt { } }
