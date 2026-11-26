@@ -21,6 +21,7 @@ robolectric = "4.18.1"
 turbine = "1.2.1"
 credentials = "1.6.0"
 googleid = "1.2.1"
+osmdroid = "6.1.20"
 androidx-test-core = "1.7.0"
 
 [libraries]
@@ -62,6 +63,7 @@ coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" 
 coil-network = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }
 credentials-play-services = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "credentials" }
+osmdroid = { module = "org.osmdroid:osmdroid-android", version.ref = "osmdroid" }
 googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
 
 junit = { module = "junit:junit", version.ref = "junit" }

@@ -23,6 +23,9 @@ sealed interface SessionState {
     /** Signed up with email and password but has not clicked the link in the verification email. */
     data class NeedsEmailVerification(val email: String?) : SessionState
 
+    /** Has a profile but has not told the app where they are yet. */
+    data object NeedsLocation : SessionState
+
     /** Signed in to Firebase but without a BookinTok profile yet. */
     data object NeedsProfile : SessionState
 
@@ -56,7 +59,12 @@ class SessionViewModel @Inject constructor(
                 }
                 emit(SessionState.Loading)
                 val state = try {
-                    if (users.myProfile() == null) SessionState.NeedsProfile else SessionState.Ready(uid)
+                    val profile = users.myProfile()
+                    when {
+                        profile == null -> SessionState.NeedsProfile
+                        profile.latitude == null -> SessionState.NeedsLocation
+                        else -> SessionState.Ready(uid)
+                    }
                 } catch (_: Exception) {
                     SessionState.Ready(uid, offline = true)
                 }

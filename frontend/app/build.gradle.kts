@@ -100,6 +100,7 @@ dependencies {
     implementation(libs.credentials)
     implementation(libs.credentials.play.services)
     implementation(libs.googleid)
+    implementation(libs.osmdroid)
     implementation(libs.play.services.location)
     implementation(libs.coil.compose)
     implementation(libs.coil.network)

@@ -1,0 +1,409 @@
+[
+ {
+  "name": "Andalucía",
+  "provinces": [
+   {
+    "name": "Almería",
+    "capital": "Almería",
+    "lat": 36.8417,
+    "lon": -2.4639
+   },
+   {
+    "name": "Cádiz",
+    "capital": "Cádiz",
+    "lat": 36.535,
+    "lon": -6.2975
+   },
+   {
+    "name": "Córdoba",
+    "capital": "Córdoba",
+    "lat": 37.89,
+    "lon": -4.78
+   },
+   {
+    "name": "Granada",
+    "capital": "Granada",
+    "lat": 37.175,
+    "lon": -3.6
+   },
+   {
+    "name": "Huelva",
+    "capital": "Huelva",
+    "lat": 37.25,
+    "lon": -6.95
+   },
+   {
+    "name": "Jaén",
+    "capital": "Jaén",
+    "lat": 37.7697,
+    "lon": -3.7889
+   },
+   {
+    "name": "Málaga",
+    "capital": "Málaga",
+    "lat": 36.7167,
+    "lon": -4.4167
+   },
+   {
+    "name": "Sevilla",
+    "capital": "Sevilla",
+    "lat": 37.3886,
+    "lon": -5.995
+   }
+  ]
+ },
+ {
+  "name": "Aragón",
+  "provinces": [
+   {
+    "name": "Huesca",
+    "capital": "Huesca",
+    "lat": 42.1401,
+    "lon": -0.4089
+   },
+   {
+    "name": "Teruel",
+    "capital": "Teruel",
+    "lat": 40.3436,
+    "lon": -1.1072
+   },
+   {
+    "name": "Zaragoza",
+    "capital": "Zaragoza",
+    "lat": 41.65,
+    "lon": -0.8833
+   }
+  ]
+ },
+ {
+  "name": "Canarias",
+  "provinces": [
+   {
+    "name": "Las Palmas",
+    "capital": "Palmas de Gran Canaria, Las",
+    "lat": 28.1272,
+    "lon": -15.4314
+   },
+   {
+    "name": "Santa Cruz de Tenerife",
+    "capital": "Santa Cruz de Tenerife",
+    "lat": 28.4667,
+    "lon": -16.25
+   }
+  ]
+ },
+ {
+  "name": "Cantabria",
+  "provinces": [
+   {
+    "name": "Cantabria",
+    "capital": "Santander",
+    "lat": 43.4667,
+    "lon": -3.8
+   }
+  ]
+ },
+ {
+  "name": "Castilla y León",
+  "provinces": [
+   {
+    "name": "Ávila",
+    "capital": "Ávila",
+    "lat": 40.6543,
+    "lon": -4.6962
+   },
+   {
+    "name": "Burgos",
+    "capital": "Burgos",
+    "lat": 42.3408,
+    "lon": -3.6997
+   },
+   {
+    "name": "León",
+    "capital": "León",
+    "lat": 42.5989,
+    "lon": -5.5669
+   },
+   {
+    "name": "Palencia",
+    "capital": "Palencia",
+    "lat": 42.0167,
+    "lon": -4.5333
+   },
+   {
+    "name": "Salamanca",
+    "capital": "Salamanca",
+    "lat": 40.965,
+    "lon": -5.6642
+   },
+   {
+    "name": "Segovia",
+    "capital": "Segovia",
+    "lat": 40.9481,
+    "lon": -4.1183
+   },
+   {
+    "name": "Soria",
+    "capital": "Soria",
+    "lat": 41.7667,
+    "lon": -2.4667
+   },
+   {
+    "name": "Valladolid",
+    "capital": "Valladolid",
+    "lat": 41.652,
+    "lon": -4.7286
+   },
+   {
+    "name": "Zamora",
+    "capital": "Zamora",
+    "lat": 41.5033,
+    "lon": -5.7556
+   }
+  ]
+ },
+ {
+  "name": "Castilla-La Mancha",
+  "provinces": [
+   {
+    "name": "Albacete",
+    "capital": "Albacete",
+    "lat": 38.9956,
+    "lon": -1.8558
+   },
+   {
+    "name": "Ciudad Real",
+    "capital": "Ciudad Real",
+    "lat": 38.9833,
+    "lon": -3.9167
+   },
+   {
+    "name": "Cuenca",
+    "capital": "Cuenca",
+    "lat": 40.0717,
+    "lon": -2.1344
+   },
+   {
+    "name": "Guadalajara",
+    "capital": "Guadalajara",
+    "lat": 40.6333,
+    "lon": -3.1667
+   },
+   {
+    "name": "Toledo",
+    "capital": "Toledo",
+    "lat": 39.8667,
+    "lon": -4.0333
+   }
+  ]
+ },
+ {
+  "name": "Cataluña",
+  "provinces": [
+   {
+    "name": "Barcelona",
+    "capital": "Barcelona",
+    "lat": 41.3825,
+    "lon": 2.1769
+   },
+   {
+    "name": "Girona",
+    "capital": "Girona",
+    "lat": 41.9833,
+    "lon": 2.8167
+   },
+   {
+    "name": "Lleida",
+    "capital": "Lleida",
+    "lat": 41.6167,
+    "lon": 0.6333
+   },
+   {
+    "name": "Tarragona",
+    "capital": "Tarragona",
+    "lat": 41.1175,
+    "lon": 1.2528
+   }
+  ]
+ },
+ {
+  "name": "Ceuta",
+  "provinces": [
+   {
+    "name": "Ceuta",
+    "capital": "Ceuta",
+    "lat": 35.8867,
+    "lon": -5.3
+   }
+  ]
+ },
+ {
+  "name": "Comunidad de Madrid",
+  "provinces": [
+   {
+    "name": "Madrid",
+    "capital": "Madrid",
+    "lat": 40.4169,
+    "lon": -3.7033
+   }
+  ]
+ },
+ {
+  "name": "Comunidad Foral de Navarra",
+  "provinces": [
+   {
+    "name": "Navarra",
+    "capital": "Pamplona/Iruña",
+    "lat": 42.8167,
+    "lon": -1.65
+   }
+  ]
+ },
+ {
+  "name": "Comunitat Valenciana",
+  "provinces": [
+   {
+    "name": "Alicante",
+    "capital": "Alacant/Alicante",
+    "lat": 38.3453,
+    "lon": -0.4831
+   },
+   {
+    "name": "Castellón",
+    "capital": "Castelló de la Plana/Castellón de la Plana",
+    "lat": 39.986,
+    "lon": -0.0374
+   },
+   {
+    "name": "Valencia",
+    "capital": "València",
+    "lat": 39.47,
+    "lon": -0.3764
+   }
+  ]
+ },
+ {
+  "name": "Extremadura",
+  "provinces": [
+   {
+    "name": "Badajoz",
+    "capital": "Badajoz",
+    "lat": 38.8779,
+    "lon": -6.9706
+   },
+   {
+    "name": "Cáceres",
+    "capital": "Cáceres",
+    "lat": 39.4731,
+    "lon": -6.3711
+   }
+  ]
+ },
+ {
+  "name": "Galicia",
+  "provinces": [
+   {
+    "name": "A Coruña",
+    "capital": "Coruña, A",
+    "lat": 43.3711,
+    "lon": -8.3961
+   },
+   {
+    "name": "Lugo",
+    "capital": "Lugo",
+    "lat": 43.0117,
+    "lon": -7.5572
+   },
+   {
+    "name": "Ourense",
+    "capital": "Ourense",
+    "lat": 42.3356,
+    "lon": -7.8641
+   },
+   {
+    "name": "Pontevedra",
+    "capital": "Pontevedra",
+    "lat": 42.4336,
+    "lon": -8.6475
+   }
+  ]
+ },
+ {
+  "name": "Illes Balears",
+  "provinces": [
+   {
+    "name": "Illes Balears",
+    "capital": "Palma",
+    "lat": 39.5667,
+    "lon": 2.6497
+   }
+  ]
+ },
+ {
+  "name": "La Rioja",
+  "provinces": [
+   {
+    "name": "La Rioja",
+    "capital": "Logroño",
+    "lat": 42.47,
+    "lon": -2.4456
+   }
+  ]
+ },
+ {
+  "name": "Melilla",
+  "provinces": [
+   {
+    "name": "Melilla",
+    "capital": "Melilla",
+    "lat": 35.2825,
+    "lon": -2.9475
+   }
+  ]
+ },
+ {
+  "name": "País Vasco",
+  "provinces": [
+   {
+    "name": "Álava",
+    "capital": "Vitoria-Gasteiz",
+    "lat": 42.8467,
+    "lon": -2.6731
+   },
+   {
+    "name": "Bizkaia",
+    "capital": "Bilbao",
+    "lat": 43.2631,
+    "lon": -2.935
+   },
+   {
+    "name": "Gipuzkoa",
+    "capital": "Donostia/San Sebastián",
+    "lat": 43.32,
+    "lon": -1.98
+   }
+  ]
+ },
+ {
+  "name": "Principado de Asturias",
+  "provinces": [
+   {
+    "name": "Asturias",
+    "capital": "Oviedo",
+    "lat": 43.3625,
+    "lon": -5.8503
+   }
+  ]
+ },
+ {
+  "name": "Región de Murcia",
+  "provinces": [
+   {
+    "name": "Murcia",
+    "capital": "Murcia",
+    "lat": 37.9833,
+    "lon": -1.1303
+   }
+  ]
+ }
+]

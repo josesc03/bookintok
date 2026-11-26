@@ -59,6 +59,8 @@ class BookListViewModelTest {
         override suspend fun booksOf(uid: String) = error("unused")
         override suspend fun save(id: Long?, request: BookRequest) = error("unused")
         override suspend fun delete(id: Long) = error("unused")
+        override suspend fun uploadImage(id: Long, jpeg: ByteArray) = error("unused")
+        override suspend fun deleteImage(id: Long) = error("unused")
     }
 
     @Test
@@ -117,14 +119,14 @@ class SessionViewModelTest {
     private class FakeUsers(var profile: () -> MyProfileDto?) : UserRepository {
         override suspend fun myProfile() = profile()
         override suspend fun register(nickname: String, displayName: String?) = error("unused")
-        override suspend fun updateLocation(latitude: Double, longitude: Double) = Unit
+        override suspend fun updateLocation(latitude: Double, longitude: Double, label: String?) = Unit
         override suspend fun publicProfile(uid: String): PublicProfileDto = error("unused")
         override suspend fun ratings(uid: String): List<RatingDto> = emptyList()
         override suspend fun rate(uid: String, score: Int, comment: String?) = Unit
         override suspend fun signOut() = Unit
     }
 
-    private val profile = MyProfileDto(uid = "u1", nickname = "ana", email = "ana@example.com")
+    private val profile = MyProfileDto(uid = "u1", nickname = "ana", email = "ana@example.com", latitude = 39.47, longitude = -0.38)
 
     private suspend fun SessionViewModel.settled() = state.first { it != SessionState.Loading }
 
@@ -151,6 +153,17 @@ class SessionViewModelTest {
         assertEquals(SessionState.NeedsEmailVerification("u1@example.com"), viewModel.settled())
 
         auth.verifyEmailSilently()
+        viewModel.refresh()
+        assertEquals(SessionState.Ready("u1"), viewModel.settled())
+    }
+
+    @Test
+    fun `users without a location are asked for it before entering`() = runTest {
+        val users = FakeUsers { profile.copy(latitude = null, longitude = null) }
+        val viewModel = SessionViewModel(FakeAuth("u1"), users)
+        assertEquals(SessionState.NeedsLocation, viewModel.settled())
+
+        users.profile = { profile }
         viewModel.refresh()
         assertEquals(SessionState.Ready("u1"), viewModel.settled())
     }
