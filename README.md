@@ -66,6 +66,12 @@ participants, so access rules live in one place. Closed exchanges stay readable 
 optimistic locking stops two simultaneous confirmations, or two exchanges of the same book, from
 overwriting each other, and a partial unique index allows only one open request per user and book.
 
+**Location privacy by design.** Users say where they are with the GPS, by picking their province
+(autonomous community → province) or by tapping a map. The API only ever stores that point snapped
+to a ~1 km grid, plus a place name. Other users see the place name and a distance rounded up to whole
+kilometres, never coordinates. Book photos are re-encoded on upload, which drops EXIF data such as
+the GPS position where the photo was taken.
+
 **Distance search runs in the database.** A bounding box (index-friendly) narrows the candidates and
 the Haversine formula, built with the JPA Criteria API, gives the exact distance. Results stay correct
 and paginated.
@@ -122,5 +128,8 @@ Errors follow [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457)
 - [x] Chat service in Ktor with MongoDB
 - [x] Docker Compose and CI
 - [x] Android app: MVVM, Hilt, Room cache so past conversations can be read offline
-- [ ] Image upload to Firebase Storage
+- [x] Google sign-in and email verification (enforced by both services)
+- [x] Book photos, scaled and stripped of metadata by the API
+- [x] Privacy-preserving location: GPS, province or map point, stored on a ~1 km grid
+- [ ] Profile photos
 - [ ] Chat broadcast across several instances (Redis pub/sub or MongoDB change streams)

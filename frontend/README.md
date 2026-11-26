@@ -22,6 +22,15 @@ flowchart LR
   there is no connection, the cached conversation is shown with a banner while the socket reconnects
   with exponential backoff (1 s → 30 s).
 - **Hilt** for dependency injection; repositories are interfaces so ViewModels can be tested with fakes.
+- **Design system from Hukly**: Space Grotesk for display text and Inter for the rest (both OFL,
+  licences in `licenses/`), 8/12 dp radii, cards with a 2 dp ink border, and the Hukly palette with
+  every hue rotated +113° (orange → green). Shared components live in `ui/components`.
+- **Onboarding**: a welcome screen with a slide-up control, sign-in (Google or email with
+  verification), profile, and a location step with three options: device location (coarse
+  permission only), autonomous community → province (bundled `assets/spain_provinces.json`, INE
+  names with Wikidata coordinates), or a point on an OpenStreetMap map (osmdroid, no API key).
+- **Book photos** are picked with the system photo picker (no storage permission), compressed on the
+  device and uploaded to the API.
 - **Type-safe navigation** (Navigation Compose with `@Serializable` routes).
 - **No secrets in the repository**: Firebase is configured at runtime from `local.properties`
   instead of a committed `google-services.json`, and only the emulator host may use plain HTTP
