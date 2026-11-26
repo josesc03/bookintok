@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: bookintok-api
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/bookintok}
+    username: ${DB_USER:bookintok}
+    password: ${DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Firebase ID tokens are standard JWTs signed by Google: we validate them
+          # against Google's public keys, so no service account key is needed.
+          issuer-uri: https://securetoken.google.com/${FIREBASE_PROJECT_ID}
+          jwk-set-uri: https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com
+          audiences: ${FIREBASE_PROJECT_ID}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  swagger-ui:
+    path: /docs
