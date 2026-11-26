@@ -1,6 +1,7 @@
 # BookinTok
 
 [![Backend](https://github.com/josesc03/bookintok/actions/workflows/backend.yml/badge.svg)](https://github.com/josesc03/bookintok/actions/workflows/backend.yml)
+[![Android](https://github.com/josesc03/bookintok/actions/workflows/android.yml/badge.svg)](https://github.com/josesc03/bookintok/actions/workflows/android.yml)
 
 BookinTok is a mobile app for **swapping books with people nearby**: you publish the books you want to
 give away, find others around you, chat with their owner and confirm the swap. Afterwards you can rate
@@ -40,7 +41,7 @@ flowchart LR
 |---|---|---|
 | [`backend/api`](backend/api) | Kotlin, Spring Boot 4, Spring Data JPA, Spring Security, Flyway, PostgreSQL | Users, books, geographic search, exchanges, ratings |
 | [`backend/chat-service`](backend/chat-service) | Kotlin, Ktor 3, coroutines, WebSockets, MongoDB | Real-time chat of each exchange and its message history |
-| [`frontend`](frontend) | Kotlin, Jetpack Compose, Room | Android app (being rebuilt) |
+| [`frontend`](frontend) | Kotlin, Jetpack Compose, Material 3, Hilt, Room, Ktor client | Android app with offline chat history |
 
 ## Design decisions
 
@@ -76,7 +77,7 @@ cd backend
 ./gradlew test
 ```
 
-46 tests. The integration tests start **real PostgreSQL and MongoDB containers** with Testcontainers
+Backend: 46 tests. The integration tests start **real PostgreSQL and MongoDB containers** with Testcontainers
 (Docker is required):
 
 - **api**: domain unit tests (exchange state machine, geographic maths) and HTTP tests of every
@@ -84,7 +85,9 @@ cd backend
 - **chat-service**: WebSocket tests with two connected users, history pagination, the API client
   (with Ktor's `MockEngine`) and the MongoDB repository.
 
-CI runs the full suite and builds both Docker images on every push ([workflow](.github/workflows/backend.yml)).
+Android: 18 JVM tests (Room with Robolectric, network with Ktor `MockEngine`); see [frontend/README.md](frontend/README.md).
+
+CI runs every suite, builds both Docker images and the debug APK ([backend](.github/workflows/backend.yml), [android](.github/workflows/android.yml)).
 
 ## Running it
 
@@ -118,6 +121,6 @@ Errors follow [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457)
 - [x] API in Spring Boot with tests on PostgreSQL
 - [x] Chat service in Ktor with MongoDB
 - [x] Docker Compose and CI
-- [ ] Android app: MVVM, repositories, Room cache so past conversations can be read offline
+- [x] Android app: MVVM, Hilt, Room cache so past conversations can be read offline
 - [ ] Image upload to Firebase Storage
 - [ ] Chat broadcast across several instances (Redis pub/sub or MongoDB change streams)
