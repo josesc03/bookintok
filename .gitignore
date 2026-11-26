@@ -1,0 +1,27 @@
+# Build output
+build/
+out/
+bin/
+*.class
+*.apk
+*.aab
+
+# Gradle / Kotlin caches
+.gradle/
+.kotlin/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Local configuration and secrets
+.env
+local.properties
+google-services.json
+*-service-account*.json
+firebase-config.json
+
+# OS
+.DS_Store
+Thumbs.db
