@@ -17,7 +17,8 @@ object TestTokens {
 
     val verification = TokenVerification.Static(JWT.require(algorithm).withIssuer(ISSUER).build())
 
-    fun forUser(uid: String): String = JWT.create().withIssuer(ISSUER).withSubject(uid).sign(algorithm)
+    fun forUser(uid: String, emailVerified: Boolean = true): String =
+        JWT.create().withIssuer(ISSUER).withSubject(uid).withClaim("email_verified", emailVerified).sign(algorithm)
 }
 
 /** Exchanges as the API would describe them: id to (participants, open). */

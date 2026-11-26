@@ -46,7 +46,12 @@ fun Application.configureAuthentication(verification: TokenVerification) {
                 }
                 is TokenVerification.Static -> verifier(verification.verifier)
             }
-            validate { credential -> credential.payload.subject?.let { JWTPrincipal(credential.payload) } }
+            // Same rule as the API: only accounts with a verified email address may chat
+            validate { credential ->
+                val payload = credential.payload
+                val verified = payload.getClaim("email_verified").asBoolean() == true
+                if (payload.subject != null && verified) JWTPrincipal(payload) else null
+            }
             challenge { _, _ -> call.respond(HttpStatusCode.Unauthorized) }
         }
     }

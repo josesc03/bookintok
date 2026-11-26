@@ -76,6 +76,14 @@ class ChatRoutesTest {
     }
 
     @Test
+    fun `accounts with an unverified email are rejected`() = chatTest {
+        val response = client.get("/api/v1/exchanges/$openExchange/messages") {
+            bearerAuth(TestTokens.forUser("reader", emailVerified = false))
+        }
+        assertEquals(HttpStatusCode.Unauthorized, response.status)
+    }
+
+    @Test
     fun `history is only visible to participants`() = chatTest {
         val response = client.get("/api/v1/exchanges/$openExchange/messages") { bearerAuth(TestTokens.forUser("stranger")) }
         assertEquals(HttpStatusCode.Forbidden, response.status)
