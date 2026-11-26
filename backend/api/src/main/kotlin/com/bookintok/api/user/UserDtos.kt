@@ -34,6 +34,10 @@ data class UpdateLocationRequest(
 
     @field:DecimalMin("-180.0") @field:DecimalMax("180.0")
     val longitude: Double,
+
+    /** Municipality to show to other users; the app picks the nearest one to the chosen point. */
+    @field:Size(max = 100)
+    val label: String? = null,
 )
 
 /** The authenticated user's own profile, including private fields. */
@@ -45,6 +49,7 @@ data class MyProfileResponse(
     val imageUrl: String?,
     val latitude: Double?,
     val longitude: Double?,
+    val locationLabel: String?,
     val rating: RatingSummary,
     val createdAt: Instant,
 )
@@ -55,6 +60,7 @@ data class PublicProfileResponse(
     val nickname: String,
     val displayName: String?,
     val imageUrl: String?,
+    val locationLabel: String?,
     val rating: RatingSummary,
     val createdAt: Instant,
 )
@@ -67,6 +73,7 @@ fun User.toMyProfile(rating: RatingSummary) = MyProfileResponse(
     imageUrl = imageUrl,
     latitude = latitude,
     longitude = longitude,
+    locationLabel = locationLabel,
     rating = rating,
     createdAt = createdAt,
 )
@@ -76,6 +83,7 @@ fun User.toPublicProfile(rating: RatingSummary) = PublicProfileResponse(
     nickname = nickname,
     displayName = displayName,
     imageUrl = imageUrl,
+    locationLabel = locationLabel,
     rating = rating,
     createdAt = createdAt,
 )

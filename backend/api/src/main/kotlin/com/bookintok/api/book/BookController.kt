@@ -29,13 +29,14 @@ class BookController(private val bookService: BookService) {
     ) = bookService.search(jwt.uid, filter, pageable)
 
     @GetMapping("/api/v1/books/{id}")
-    fun findById(@PathVariable id: Long) = bookService.findById(id)
+    fun findById(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: Long) = bookService.findById(id, jwt.uid)
 
     @GetMapping("/api/v1/users/{uid}/books")
     fun findByOwner(
+        @AuthenticationPrincipal jwt: Jwt,
         @PathVariable uid: String,
         @PageableDefault(size = 20, sort = ["createdAt"], direction = Sort.Direction.DESC) pageable: Pageable,
-    ) = bookService.findByOwner(uid, pageable)
+    ) = bookService.findByOwner(uid, jwt.uid, pageable)
 
     @PostMapping("/api/v1/books")
     @ResponseStatus(HttpStatus.CREATED)

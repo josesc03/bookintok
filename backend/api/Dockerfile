@@ -8,7 +8,7 @@ COPY chat-service/build.gradle.kts chat-service/
 RUN ./gradlew :api:bootJar --no-daemon -q
 
 FROM eclipse-temurin:21-jre-alpine
-RUN addgroup -S app && adduser -S app -G app
+RUN addgroup -S app && adduser -S app -G app && mkdir -p /app/data/images && chown -R app:app /app/data
 USER app
 WORKDIR /app
 COPY --from=build /workspace/api/build/libs/*-SNAPSHOT.jar app.jar

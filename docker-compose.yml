@@ -32,6 +32,9 @@ services:
       DB_USER: ${POSTGRES_USER:-bookintok}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:?set FIREBASE_PROJECT_ID in .env}
+      IMAGES_DIR: /app/data/images
+    volumes:
+      - book-images:/app/data/images
     ports:
       - "8080:8080"
     depends_on:
@@ -58,3 +61,4 @@ services:
 volumes:
   postgres-data:
   mongo-data:
+  book-images:

@@ -26,6 +26,7 @@ class BookService(
 
     /** Available books from other users, newest first, optionally near the viewer. */
     fun search(viewerUid: String, filter: BookSearchFilter, pageable: Pageable): PageResponse<BookResponse> {
+        val viewerLocation = userService.getUser(viewerUid).location
         val specs = buildList {
             add(BookSpecifications.isAvailable())
             add(BookSpecifications.notOwnedBy(viewerUid))
@@ -35,18 +36,21 @@ class BookService(
             filter.coverType?.let { add(BookSpecifications.hasCoverType(it)) }
             filter.condition?.let { add(BookSpecifications.hasCondition(it)) }
             filter.maxDistanceKm?.let { radius ->
-                val location = userService.getUser(viewerUid).location
+                val location = viewerLocation
                     ?: throw BusinessRuleException("Set your location before searching by distance")
                 add(BookSpecifications.withinDistance(location, radius))
             }
         }
-        return PageResponse.of(books.findAll(Specification.allOf(specs), pageable)) { it.toResponse() }
+        return PageResponse.of(books.findAll(Specification.allOf(specs), pageable)) { it.toResponse(viewerLocation) }
     }
 
-    fun findById(id: Long): BookResponse = getBook(id).toResponse()
+    fun findById(id: Long, viewerUid: String): BookResponse =
+        getBook(id).toResponse(userService.getUser(viewerUid).location)
 
-    fun findByOwner(ownerUid: String, pageable: Pageable): PageResponse<BookResponse> =
-        PageResponse.of(books.findByOwnerUid(ownerUid, pageable)) { it.toResponse() }
+    fun findByOwner(ownerUid: String, viewerUid: String, pageable: Pageable): PageResponse<BookResponse> {
+        val viewerLocation = userService.getUser(viewerUid).location
+        return PageResponse.of(books.findByOwnerUid(ownerUid, pageable)) { it.toResponse(viewerLocation) }
+    }
 
     @Transactional
     fun create(ownerUid: String, request: BookRequest): BookResponse {
@@ -60,7 +64,7 @@ class BookService(
             language = request.language,
             coverType = request.coverType,
             condition = request.condition,
-            imageUrl = request.imageUrl,
+
             createdAt = Instant.now(clock),
         )
         return books.save(book).toResponse()
@@ -79,7 +83,7 @@ class BookService(
             language = request.language
             coverType = request.coverType
             condition = request.condition
-            imageUrl = request.imageUrl
+
         }
         return book.toResponse()
     }

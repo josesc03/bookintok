@@ -59,6 +59,32 @@ class BookApiTest : IntegrationTest() {
     }
 
     @Test
+    fun `results show a rounded distance and the owner's area, never coordinates`() {
+        register("alice", latitude = 39.4699, longitude = -0.3763)
+        register("near")
+        putAs("near", "/api/v1/users/me/location", """{"latitude": 39.5426, "longitude": -0.4416, "label": "Paterna"}""")
+        createBook("near")
+
+        getAs("alice", "/api/v1/books")
+            .andExpect {
+                jsonPath("$.content[0].distanceKm") { value(10) }
+                jsonPath("$.content[0].owner.locationLabel") { value("Paterna") }
+                jsonPath("$.content[0].owner.latitude") { doesNotExist() }
+            }
+    }
+
+    @Test
+    fun `stored location is snapped to a 1 km grid`() {
+        register("alice")
+        putAs("alice", "/api/v1/users/me/location", """{"latitude": 39.469912, "longitude": -0.376288}""")
+        getAs("alice", "/api/v1/users/me")
+            .andExpect {
+                jsonPath("$.latitude") { value(39.47) }
+                jsonPath("$.longitude") { value(-0.38) }
+            }
+    }
+
+    @Test
     fun `distance search requires the viewer's location`() {
         register("alice")
         getAs("alice", "/api/v1/books?maxDistanceKm=10").andExpect { status { isUnprocessableContent() } }

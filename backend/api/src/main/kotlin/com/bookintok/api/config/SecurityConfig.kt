@@ -3,6 +3,7 @@ package com.bookintok.api.config
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator
@@ -30,6 +31,8 @@ class SecurityConfig {
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests {
                 it.requestMatchers("/actuator/health/**", "/docs", "/docs/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                // Book photos are loaded by image libraries without a token (see BookImageController)
+                it.requestMatchers(HttpMethod.GET, "/api/v1/books/*/image").permitAll()
                 it.anyRequest().authenticated()
             }
             .oauth2ResourceServer { it.jwt { } }

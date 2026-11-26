@@ -1,5 +1,6 @@
 package com.bookintok.api.user
 
+import com.bookintok.api.common.GeoDistance
 import com.bookintok.api.common.GeoPoint
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -28,6 +29,9 @@ class User(
 
     var longitude: Double? = null,
 
+    /** Municipality shown to other users next to the user's books, for example "Paterna". */
+    var locationLabel: String? = null,
+
     @Column(nullable = false, updatable = false)
     val createdAt: Instant,
 ) {
@@ -38,8 +42,11 @@ class User(
             return GeoPoint(lat, lon)
         }
 
-    fun moveTo(point: GeoPoint) {
-        latitude = point.latitude
-        longitude = point.longitude
+    /** Stores only the approximate position (see [GeoDistance.approximate]), never the exact point. */
+    fun moveTo(point: GeoPoint, label: String?) {
+        val approximate = GeoDistance.approximate(point)
+        latitude = approximate.latitude
+        longitude = approximate.longitude
+        locationLabel = label?.trim()?.ifEmpty { null }
     }
 }

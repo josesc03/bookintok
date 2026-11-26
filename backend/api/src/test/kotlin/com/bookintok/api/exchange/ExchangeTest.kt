@@ -21,7 +21,7 @@ class ExchangeTest {
     private val book = Book(
         owner = owner, title = "Dune", author = "Frank Herbert", description = null,
         mainCategory = "Sci-fi", secondaryCategory = null, language = "en",
-        coverType = CoverType.PAPERBACK, condition = BookCondition.USED, imageUrl = null, createdAt = now,
+        coverType = CoverType.PAPERBACK, condition = BookCondition.USED, createdAt = now,
     )
 
     private fun newExchange() = Exchange(book = book, owner = owner, requester = requester, createdAt = now)

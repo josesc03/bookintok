@@ -1,11 +1,13 @@
 package com.bookintok.api.book
 
+import com.bookintok.api.common.GeoDistance
+import com.bookintok.api.common.GeoPoint
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.Size
-import org.hibernate.validator.constraints.URL
 import java.time.Instant
 
+/** The photo is not part of the request: it is uploaded separately to `PUT /api/v1/books/{id}/image`. */
 data class BookRequest(
     @field:NotBlank @field:Size(max = 255)
     val title: String,
@@ -28,9 +30,6 @@ data class BookRequest(
     val coverType: CoverType,
 
     val condition: BookCondition,
-
-    @field:URL @field:Size(max = 500)
-    val imageUrl: String? = null,
 )
 
 /** Query parameters of `GET /api/v1/books`. All of them are optional. */
@@ -44,7 +43,8 @@ data class BookSearchFilter(
     val maxDistanceKm: Double? = null,
 )
 
-data class BookOwner(val uid: String, val nickname: String, val imageUrl: String?)
+/** The owner as other users see them: the municipality, never coordinates. */
+data class BookOwner(val uid: String, val nickname: String, val imageUrl: String?, val locationLabel: String?)
 
 data class BookResponse(
     val id: Long,
@@ -57,12 +57,16 @@ data class BookResponse(
     val coverType: CoverType,
     val condition: BookCondition,
     val status: BookStatus,
+    /** Relative to the API base URL. */
     val imageUrl: String?,
     val owner: BookOwner,
+    /** Approximate distance from the viewer, in whole kilometres (at least 1); null if unknown. */
+    val distanceKm: Int?,
     val createdAt: Instant,
 )
 
-fun Book.toResponse() = BookResponse(
+/** [viewer] is the location of the user asking, used to tell them how far the book is. */
+fun Book.toResponse(viewer: GeoPoint? = null) = BookResponse(
     id = requireNotNull(id),
     title = title,
     author = author,
@@ -73,7 +77,8 @@ fun Book.toResponse() = BookResponse(
     coverType = coverType,
     condition = condition,
     status = status,
-    imageUrl = imageUrl,
-    owner = BookOwner(owner.uid, owner.nickname, owner.imageUrl),
+    imageUrl = imageUrl(),
+    owner = BookOwner(owner.uid, owner.nickname, owner.imageUrl, owner.locationLabel),
+    distanceKm = viewer?.let { from -> owner.location?.let { GeoDistance.roundedKm(from, it) } },
     createdAt = createdAt,
 )

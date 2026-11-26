@@ -59,6 +59,6 @@ class UserService(
 
     @Transactional
     fun updateLocation(uid: String, request: UpdateLocationRequest) {
-        getUser(uid).moveTo(GeoPoint(request.latitude, request.longitude))
+        getUser(uid).moveTo(GeoPoint(request.latitude, request.longitude), request.label)
     }
 }

@@ -42,7 +42,8 @@ class Book(
     @Column(name = "condition")
     var condition: BookCondition,
 
-    var imageUrl: String?,
+    /** Key of the uploaded photo in [com.bookintok.api.image.ImageStorage], if any. */
+    var imageKey: String? = null,
 
     @Column(nullable = false, updatable = false)
     val createdAt: Instant,
@@ -59,6 +60,12 @@ class Book(
     var version: Long = 0
 
     fun isOwnedBy(uid: String) = owner.uid == uid
+
+    /**
+     * Path of the photo, relative to the API. The key changes on every upload, so clients can
+     * cache the image forever and still see a new photo.
+     */
+    fun imageUrl(): String? = imageKey?.let { "/api/v1/books/$id/image?v=$it" }
 
     fun markExchanged() {
         status = BookStatus.EXCHANGED

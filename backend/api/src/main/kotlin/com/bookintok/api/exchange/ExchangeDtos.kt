@@ -19,7 +19,7 @@ data class ExchangeResponse(
 fun Exchange.toResponse() = ExchangeResponse(
     id = requireNotNull(id),
     status = status,
-    book = ExchangeBook(requireNotNull(book.id), book.title, book.imageUrl),
+    book = ExchangeBook(requireNotNull(book.id), book.title, book.imageUrl()),
     owner = ExchangeParticipant(owner.uid, owner.nickname, owner.imageUrl, ownerConfirmed),
     requester = ExchangeParticipant(requester.uid, requester.nickname, requester.imageUrl, requesterConfirmed),
     createdAt = createdAt,

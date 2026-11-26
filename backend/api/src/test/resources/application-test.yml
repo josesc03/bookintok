@@ -6,3 +6,7 @@ spring:
           # Tests sign requests with spring-security-test's jwt(), so these are never contacted
           issuer-uri: https://securetoken.google.com/test-project
           audiences: test-project
+
+bookintok:
+  images:
+    dir: ${java.io.tmpdir}/bookintok-test-images
