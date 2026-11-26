@@ -16,24 +16,40 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.bookintok.app.core.auth.FirebaseNotConfiguredException
 import com.bookintok.app.core.auth.NotSignedInException
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.bookintok.app.core.network.ApiException
 import com.bookintok.app.core.network.BookCondition
 import com.bookintok.app.core.network.CoverType
 import com.bookintok.app.core.network.ExchangeStatus
 import java.io.IOException
 
-/** Turns an error into a short message for the user (the UI is in Spanish). */
+/**
+ * Turns an error into a short message for the user. The UI is in Spanish, while the server and
+ * Firebase explain errors in English, so messages are chosen by error type rather than shown as is.
+ */
 fun Throwable.toUserMessage(): String = when (this) {
-    is ApiException -> detail ?: when (status) {
+    is ApiException -> when (status) {
+        400 -> "Revisa los datos: ${detail ?: "hay campos no válidos"}"
         401 -> "Tu sesión ha caducado, vuelve a entrar"
         403 -> "No tienes permiso para hacer esto"
         404 -> "No se ha encontrado"
-        else -> "Error del servidor ($status)"
+        409 -> "No se ha podido completar: ya existe o ha cambiado mientras tanto"
+        422 -> "No se puede hacer en este momento"
+        else -> "Error del servidor ($status). Inténtalo más tarde"
     }
     is NotSignedInException -> "Tu sesión ha caducado, vuelve a entrar"
-    is IOException -> "Sin conexión. Comprueba tu red e inténtalo de nuevo"
-    else -> message ?: "Algo ha ido mal"
+    is FirebaseNotConfiguredException -> "La app no tiene Firebase configurado (revisa local.properties)"
+    is FirebaseAuthInvalidUserException, is FirebaseAuthInvalidCredentialsException -> "Email o contraseña incorrectos"
+    is FirebaseAuthUserCollisionException -> "Ya existe una cuenta con ese email"
+    is FirebaseAuthWeakPasswordException -> "La contraseña es demasiado débil"
+    is FirebaseNetworkException, is IOException -> "Sin conexión. Comprueba tu red e inténtalo de nuevo"
+    else -> "Algo ha ido mal. Inténtalo de nuevo"
 }
 
 val BookCondition.label

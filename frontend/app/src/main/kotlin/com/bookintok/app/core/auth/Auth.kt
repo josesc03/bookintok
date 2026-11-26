@@ -14,6 +14,8 @@ import javax.inject.Singleton
 
 class NotSignedInException : IllegalStateException("No user is signed in")
 
+class FirebaseNotConfiguredException : IllegalStateException("Firebase is not configured")
+
 /** Supplies the Firebase ID token sent to the backend. */
 fun interface AuthTokenProvider {
     suspend fun idToken(): String
@@ -42,7 +44,7 @@ class FirebaseAuthRepository @Inject constructor(
         if (FirebaseApp.getApps(context).isEmpty()) null else FirebaseAuth.getInstance()
     }
 
-    private fun requireAuth() = auth ?: error("Firebase is not configured")
+    private fun requireAuth() = auth ?: throw FirebaseNotConfiguredException()
 
     override val currentUid: Flow<String?> = auth?.let { firebase ->
         callbackFlow {
