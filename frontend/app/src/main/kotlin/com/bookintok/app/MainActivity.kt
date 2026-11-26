@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bookintok.app.ui.auth.LoginScreen
 import com.bookintok.app.ui.auth.ProfileSetupScreen
+import com.bookintok.app.ui.auth.VerifyEmailScreen
 import com.bookintok.app.ui.common.LoadingBox
 import com.bookintok.app.ui.navigation.BookintokNavHost
 import com.bookintok.app.ui.session.SessionState
@@ -31,7 +32,9 @@ class MainActivity : ComponentActivity() {
                     when (state) {
                         SessionState.Loading -> LoadingBox()
                         SessionState.SignedOut -> LoginScreen()
-                        SessionState.NeedsProfile -> ProfileSetupScreen(onCreated = session::profileCreated)
+                        is SessionState.NeedsEmailVerification ->
+                            VerifyEmailScreen(email = (state as SessionState.NeedsEmailVerification).email, onVerified = session::refresh)
+                        SessionState.NeedsProfile -> ProfileSetupScreen(onCreated = session::refresh)
                         is SessionState.Ready -> BookintokNavHost()
                     }
                 }

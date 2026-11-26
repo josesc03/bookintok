@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bookintok.app.core.auth.FirebaseNotConfiguredException
+import com.bookintok.app.core.auth.NoGoogleAccountException
 import com.bookintok.app.core.auth.NotSignedInException
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
@@ -45,6 +46,7 @@ fun Throwable.toUserMessage(): String = when (this) {
     }
     is NotSignedInException -> "Tu sesión ha caducado, vuelve a entrar"
     is FirebaseNotConfiguredException -> "La app no tiene Firebase configurado (revisa local.properties)"
+    is NoGoogleAccountException -> "No hay ninguna cuenta de Google en este dispositivo"
     is FirebaseAuthInvalidUserException, is FirebaseAuthInvalidCredentialsException -> "Email o contraseña incorrectos"
     is FirebaseAuthUserCollisionException -> "Ya existe una cuenta con ese email"
     is FirebaseAuthWeakPasswordException -> "La contraseña es demasiado débil"

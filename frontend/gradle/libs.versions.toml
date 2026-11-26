@@ -19,6 +19,8 @@ coil = "3.6.3"
 junit = "4.13.2"
 robolectric = "4.18.1"
 turbine = "1.2.1"
+credentials = "1.6.0"
+googleid = "1.2.1"
 androidx-test-core = "1.7.0"
 
 [libraries]
@@ -58,6 +60,9 @@ firebase-auth = { module = "com.google.firebase:firebase-auth" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
+credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }
+credentials-play-services = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "credentials" }
+googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }

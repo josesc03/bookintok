@@ -19,6 +19,7 @@ class BookintokApplication : Application() {
      * google-services.json, so the repository holds no project configuration.
      */
     private fun initFirebase() {
+        if (FirebaseApp.getApps(this).isNotEmpty()) return // already initialised in this process
         if (BuildConfig.FIREBASE_PROJECT_ID.isBlank()) {
             Log.w("BookinTok", "Firebase is not configured: set firebase.* in local.properties")
             return

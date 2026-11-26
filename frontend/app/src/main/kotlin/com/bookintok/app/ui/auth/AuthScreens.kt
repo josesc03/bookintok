@@ -29,7 +29,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import com.bookintok.app.BuildConfig
 import com.bookintok.app.core.auth.AuthRepository
+import com.bookintok.app.core.auth.GoogleSignInCancelledException
+import com.bookintok.app.core.auth.requestGoogleIdToken
 import com.bookintok.app.data.UserRepository
 import com.bookintok.app.ui.common.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -57,6 +63,22 @@ class LoginViewModel @Inject constructor(private val auth: AuthRepository) : Vie
     fun onPassword(value: String) = _state.update { it.copy(password = value, error = null) }
 
     fun toggleMode() = _state.update { it.copy(isSignUp = !it.isSignUp, error = null) }
+
+    /** [requestToken] shows Google's account picker; it lives in the UI because it needs the Activity. */
+    fun signInWithGoogle(requestToken: suspend () -> String) {
+        _state.update { it.copy(loading = true, error = null) }
+        viewModelScope.launch {
+            try {
+                auth.signInWithGoogle(requestToken())
+            } catch (_: GoogleSignInCancelledException) {
+                // The user closed the picker: nothing to report
+            } catch (e: Exception) {
+                _state.update { it.copy(error = e.toUserMessage()) }
+            } finally {
+                _state.update { it.copy(loading = false) }
+            }
+        }
+    }
 
     /** On success the session flow notices the signed-in user and moves on. */
     fun submit() {
@@ -109,6 +131,75 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
         TextButton(onClick = viewModel::toggleMode) {
             Text(if (state.isSignUp) "Ya tengo cuenta" else "¿No tienes cuenta? Regístrate")
         }
+        Text("o", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val context = LocalContext.current
+        OutlinedButton(
+            onClick = { viewModel.signInWithGoogle { requestGoogleIdToken(context, BuildConfig.GOOGLE_WEB_CLIENT_ID) } },
+            enabled = !state.loading,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Continuar con Google") }
+    }
+}
+
+data class VerifyEmailUiState(val working: Boolean = false, val message: String? = null, val verified: Boolean = false)
+
+@HiltViewModel
+class VerifyEmailViewModel @Inject constructor(
+    private val auth: AuthRepository,
+    private val users: UserRepository,
+) : ViewModel() {
+    private val _state = MutableStateFlow(VerifyEmailUiState())
+    val state = _state.asStateFlow()
+
+    /** Called when the user says they clicked the link: asks Firebase whether it is verified now. */
+    fun check() = work {
+        val user = auth.reloadUser()
+        if (user?.emailVerified == true) {
+            _state.update { it.copy(verified = true) }
+        } else {
+            _state.update { it.copy(message = "Todavía no aparece como verificado. Abre el enlace del correo e inténtalo de nuevo.") }
+        }
+    }
+
+    fun resend() = work {
+        auth.sendVerificationEmail()
+        _state.update { it.copy(message = "Te hemos enviado otro correo. Revisa también la carpeta de spam.") }
+    }
+
+    fun signOut() = work { users.signOut() }
+
+    private fun work(block: suspend () -> Unit) {
+        _state.update { it.copy(working = true, message = null) }
+        viewModelScope.launch {
+            try {
+                block()
+            } catch (e: Exception) {
+                _state.update { it.copy(message = e.toUserMessage()) }
+            } finally {
+                _state.update { it.copy(working = false) }
+            }
+        }
+    }
+}
+
+@Composable
+fun VerifyEmailScreen(email: String?, onVerified: () -> Unit, viewModel: VerifyEmailViewModel = hiltViewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(state.verified) { if (state.verified) onVerified() }
+    FormColumn {
+        Text("Verifica tu correo", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            "Te hemos enviado un enlace a ${email ?: "tu correo"}. Ábrelo para activar tu cuenta y vuelve aquí.",
+            textAlign = TextAlign.Center,
+        )
+        state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center) }
+        Button(onClick = viewModel::check, enabled = !state.working, modifier = Modifier.fillMaxWidth()) {
+            Text("Ya lo he verificado")
+        }
+        OutlinedButton(onClick = viewModel::resend, enabled = !state.working, modifier = Modifier.fillMaxWidth()) {
+            Text("Reenviar el correo")
+        }
+        TextButton(onClick = viewModel::signOut, enabled = !state.working) { Text("Usar otra cuenta") }
     }
 }
 

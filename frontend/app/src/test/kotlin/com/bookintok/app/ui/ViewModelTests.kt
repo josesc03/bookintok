@@ -2,6 +2,7 @@ package com.bookintok.app.ui
 
 import com.bookintok.app.MainDispatcherRule
 import com.bookintok.app.core.auth.AuthRepository
+import com.bookintok.app.core.auth.AuthUser
 import com.bookintok.app.core.network.ApiException
 import com.bookintok.app.core.network.BookCondition
 import com.bookintok.app.core.network.BookDto
@@ -95,13 +96,21 @@ class SessionViewModelTest {
     @get:Rule
     val main = MainDispatcherRule()
 
-    private class FakeAuth(uid: String?) : AuthRepository {
-        override val currentUid = MutableStateFlow(uid)
-        override fun currentUidNow() = currentUid.value
+    private class FakeAuth(uid: String?, verified: Boolean = true) : AuthRepository {
+        override val currentUser = MutableStateFlow(uid?.let { AuthUser(it, "$it@example.com", verified) })
+        override fun currentUserNow() = currentUser.value
         override suspend fun signIn(email: String, password: String) = Unit
         override suspend fun signUp(email: String, password: String) = Unit
+        override suspend fun signInWithGoogle(googleIdToken: String) = Unit
+        override suspend fun sendVerificationEmail() = Unit
+        override suspend fun reloadUser() = currentUser.value
         override fun signOut() {
-            currentUid.value = null
+            currentUser.value = null
+        }
+
+        /** Simulates the user clicking the link in the verification email (Firebase does not notify it). */
+        fun verifyEmailSilently() {
+            currentUser.value?.let { currentUser.value = it.copy(emailVerified = true) }
         }
     }
 
@@ -131,7 +140,18 @@ class SessionViewModelTest {
         assertEquals(SessionState.NeedsProfile, viewModel.settled())
 
         users.profile = { profile }
-        viewModel.profileCreated()
+        viewModel.refresh()
+        assertEquals(SessionState.Ready("u1"), viewModel.settled())
+    }
+
+    @Test
+    fun `unverified email blocks the app until the user verifies it`() = runTest {
+        val auth = FakeAuth("u1", verified = false)
+        val viewModel = SessionViewModel(auth, FakeUsers { profile })
+        assertEquals(SessionState.NeedsEmailVerification("u1@example.com"), viewModel.settled())
+
+        auth.verifyEmailSilently()
+        viewModel.refresh()
         assertEquals(SessionState.Ready("u1"), viewModel.settled())
     }
 

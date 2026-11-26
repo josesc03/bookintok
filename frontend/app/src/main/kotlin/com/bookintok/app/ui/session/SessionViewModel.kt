@@ -10,8 +10,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
@@ -20,6 +20,9 @@ sealed interface SessionState {
 
     data object SignedOut : SessionState
 
+    /** Signed up with email and password but has not clicked the link in the verification email. */
+    data class NeedsEmailVerification(val email: String?) : SessionState
+
     /** Signed in to Firebase but without a BookinTok profile yet. */
     data object NeedsProfile : SessionState
 
@@ -27,22 +30,28 @@ sealed interface SessionState {
     data class Ready(val uid: String, val offline: Boolean = false) : SessionState
 }
 
-/** Decides which part of the app to show: sign in, profile creation or the app itself. */
+/** Decides which part of the app to show: sign in, email verification, profile creation or the app. */
 @HiltViewModel
 class SessionViewModel @Inject constructor(
-    auth: AuthRepository,
+    private val auth: AuthRepository,
     private val users: UserRepository,
 ) : ViewModel() {
 
-    /** Bumped after the profile is created, to check it again. */
-    private val profileVersion = MutableStateFlow(0)
+    /** Bumped to evaluate the session again (after verifying the email or creating the profile). */
+    private val version = MutableStateFlow(0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val state: StateFlow<SessionState> = combine(auth.currentUid, profileVersion) { uid, _ -> uid }
+    val state: StateFlow<SessionState> = combine(auth.currentUser, version) { user, _ -> user?.uid }
         .flatMapLatest { uid ->
             flow {
-                if (uid == null) {
+                // Read the user again: reloadUser() may have changed emailVerified since the last emission
+                val user = auth.currentUserNow()
+                if (uid == null || user == null) {
                     emit(SessionState.SignedOut)
+                    return@flow
+                }
+                if (!user.emailVerified) {
+                    emit(SessionState.NeedsEmailVerification(user.email))
                     return@flow
                 }
                 emit(SessionState.Loading)
@@ -56,7 +65,7 @@ class SessionViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionState.Loading)
 
-    fun profileCreated() {
-        profileVersion.value++
+    fun refresh() {
+        version.value++
     }
 }
