@@ -24,6 +24,20 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.draw.alpha
+import com.bookintok.app.ui.components.BkCard
+import com.bookintok.app.ui.components.Badge
+import com.bookintok.app.ui.components.BookCover
+import com.bookintok.app.ui.components.GhostButton
+import com.bookintok.app.ui.components.PrimaryButton
+import com.bookintok.app.ui.components.SecondaryButton
+import com.bookintok.app.ui.components.subtleBorder
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,23 +76,31 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
     Column(Modifier.fillMaxSize().imePadding()) {
         val exchange = state.exchange
         if (exchange != null) {
-            Surface(tonalElevation = 2.dp) {
-                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(exchange.bookTitle, style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Con @${exchange.counterpartOf(state.myUid).nickname} · ${exchange.status.label}",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    if (exchange.isOpen) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = viewModel::confirm, enabled = !state.iConfirmed) {
-                                Text(if (state.iConfirmed) "Esperando a la otra persona" else "Confirmar intercambio")
-                            }
-                            OutlinedButton(onClick = viewModel::cancel) { Text("Cancelar") }
-                        }
-                    } else if (state.canRate) {
-                        Button(onClick = { showRating = true }) { Text("Valorar a @${exchange.counterpartOf(state.myUid).nickname}") }
+            BkCard(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), contentPadding = PaddingValues(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    BookCover(exchange.bookTitle, exchange.bookImageUrl, Modifier.width(44.dp).aspectRatio(3f / 4f))
+                    Column(Modifier.weight(1f)) {
+                        Text(exchange.bookTitle, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                        Text("con @${exchange.counterpartOf(state.myUid).nickname}", style = MaterialTheme.typography.labelMedium)
                     }
+                    Badge(exchange.status.label, emphasized = exchange.isOpen)
+                }
+                if (exchange.isOpen) {
+                    Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PrimaryButton(
+                            if (state.iConfirmed) "Esperando confirmación" else "Confirmar intercambio",
+                            onClick = viewModel::confirm,
+                            enabled = !state.iConfirmed,
+                            modifier = Modifier.weight(1f),
+                        )
+                        GhostButton("Cancelar", viewModel::cancel)
+                    }
+                } else if (state.canRate) {
+                    SecondaryButton(
+                        "Valorar a @${exchange.counterpartOf(state.myUid).nickname}",
+                        onClick = { showRating = true },
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    )
                 }
             }
         }
@@ -95,21 +117,32 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             if (state.canLoadOlder && state.messages.isNotEmpty()) {
-                item { TextButton(onClick = viewModel::loadOlder) { Text("Ver mensajes anteriores") } }
+                item { GhostButton("Ver mensajes anteriores", viewModel::loadOlder) }
             }
             items(state.messages, key = { it.id }) { message -> MessageBubble(message, mine = message.senderUid == state.myUid) }
         }
 
         if (exchange?.isOpen != false) {
-            Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 OutlinedTextField(
                     value = state.draft,
                     onValueChange = viewModel::onDraft,
                     placeholder = { Text("Escribe un mensaje") },
                     modifier = Modifier.weight(1f),
                     maxLines = 4,
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                    ),
                 )
-                IconButton(onClick = viewModel::send, enabled = state.canSend) {
+                FilledIconButton(onClick = viewModel::send, enabled = state.canSend, modifier = Modifier.size(52.dp)) {
                     Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Enviar")
                 }
             }
@@ -131,13 +164,19 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
 private fun MessageBubble(message: ChatMessage, mine: Boolean) {
     Box(Modifier.fillMaxWidth(), contentAlignment = if (mine) Alignment.CenterEnd else Alignment.CenterStart) {
         Surface(
-            color = if (mine) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-            shape = RoundedCornerShape(16.dp),
+            color = if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLowest,
+            contentColor = if (mine) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = if (mine) 16.dp else 4.dp, bottomEnd = if (mine) 4.dp else 16.dp),
+            border = if (mine) null else subtleBorder(),
             modifier = Modifier.widthIn(max = 300.dp),
         ) {
-            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Text(message.content)
-                Text(timeFormat.format(message.sentAt), style = MaterialTheme.typography.labelSmall)
+            Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+                Text(message.content, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    timeFormat.format(message.sentAt),
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.align(Alignment.End).alpha(0.7f),
+                )
             }
         }
     }

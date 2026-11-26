@@ -1,28 +1,33 @@
 package com.bookintok.app.ui.profile
 
-import android.Manifest
-import android.annotation.SuppressLint
-import android.content.Context
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.bookintok.app.core.network.BookDto
@@ -30,18 +35,20 @@ import com.bookintok.app.core.network.MyProfileDto
 import com.bookintok.app.core.network.RatingDto
 import com.bookintok.app.data.BookRepository
 import com.bookintok.app.data.UserRepository
-import com.bookintok.app.ui.books.BookCard
+import com.bookintok.app.ui.books.BookTile
 import com.bookintok.app.ui.common.LoadingBox
-import com.bookintok.app.ui.common.MessageBox
 import com.bookintok.app.ui.common.toUserMessage
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
+import com.bookintok.app.ui.components.Avatar
+import com.bookintok.app.ui.components.BkCard
+import com.bookintok.app.ui.components.EmptyState
+import com.bookintok.app.ui.components.GhostButton
+import com.bookintok.app.ui.components.SecondaryButton
+import com.bookintok.app.ui.components.SectionTitle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.util.Locale
 import javax.inject.Inject
 
@@ -50,7 +57,7 @@ data class ProfileUiState(
     val books: List<BookDto> = emptyList(),
     val ratings: List<RatingDto> = emptyList(),
     val loading: Boolean = true,
-    val message: String? = null,
+    val error: String? = null,
 )
 
 @HiltViewModel
@@ -61,13 +68,10 @@ class ProfileViewModel @Inject constructor(
     private val _state = MutableStateFlow(ProfileUiState())
     val state = _state.asStateFlow()
 
-    init {
-        load()
-    }
-
+    /** Called every time the screen is shown, so changes made elsewhere (location, books) appear. */
     fun load() {
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, message = null) }
+            _state.update { it.copy(loading = true, error = null) }
             try {
                 val profile = users.myProfile() ?: return@launch
                 _state.update {
@@ -78,26 +82,12 @@ class ProfileViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(message = e.toUserMessage()) }
+                _state.update { it.copy(error = e.toUserMessage()) }
             } finally {
                 _state.update { it.copy(loading = false) }
             }
         }
     }
-
-    fun updateLocation(latitude: Double, longitude: Double) {
-        viewModelScope.launch {
-            try {
-                users.updateLocation(latitude, longitude)
-                _state.update { it.copy(message = "Ubicación actualizada: ya puedes buscar libros cerca") }
-                load()
-            } catch (e: Exception) {
-                _state.update { it.copy(message = e.toUserMessage()) }
-            }
-        }
-    }
-
-    fun locationUnavailable() = _state.update { it.copy(message = "No se ha podido obtener tu ubicación") }
 
     fun signOut() {
         viewModelScope.launch { users.signOut() }
@@ -105,63 +95,113 @@ class ProfileViewModel @Inject constructor(
 }
 
 @Composable
-fun ProfileScreen(onBookClick: (Long) -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(onBookClick: (Long) -> Unit, onChangeLocation: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val requestLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) {
-            scope.launch { fetchLocation(context, onResult = viewModel::updateLocation, onError = viewModel::locationUnavailable) }
-        } else {
-            viewModel.locationUnavailable()
-        }
+    LifecycleResumeEffect(Unit) {
+        viewModel.load()
+        onPauseOrDispose { }
     }
 
     val profile = state.profile
     when {
         state.loading && profile == null -> LoadingBox()
-        profile == null -> MessageBox(state.message ?: "No se ha podido cargar tu perfil", actionLabel = "Reintentar", onAction = viewModel::load)
-        else -> LazyColumn(
-            Modifier.fillMaxSize().padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        profile == null -> EmptyState(
+            Icons.Default.ErrorOutline,
+            "No hemos podido cargar tu perfil",
+            state.error ?: "Inténtalo de nuevo en un momento.",
+            actionLabel = "Reintentar",
+            onAction = viewModel::load,
+        )
+        else -> LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 156.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxSize(),
         ) {
-            item {
-                Text("@${profile.nickname}", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 16.dp))
-                profile.displayName?.let { Text(it) }
-                val rating = profile.rating
-                Text(
-                    if (rating.count == 0L) "Sin valoraciones todavía"
-                    else "★ ${String.format(Locale.getDefault(), "%.1f", rating.average)} (${rating.count} valoraciones)",
-                )
-                state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-                OutlinedButton(
-                    onClick = { requestLocation.launch(Manifest.permission.ACCESS_COARSE_LOCATION) },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                ) {
-                    Text(if (profile.latitude == null) "Usar mi ubicación para buscar cerca" else "Actualizar mi ubicación")
+            item(span = { GridItemSpan(maxLineSpan) }) { ProfileHeader(profile, onChangeLocation) }
+            item(span = { GridItemSpan(maxLineSpan) }) { SectionTitle("Mis libros (${state.books.size})") }
+            if (state.books.isEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    EmptyState(Icons.Default.AutoStories, "Aún no has publicado libros", "Publica alguno desde la pestaña Libros.")
                 }
             }
-            item { Text("Mis libros", style = MaterialTheme.typography.titleMedium) }
-            if (state.books.isEmpty()) item { Text("Aún no has publicado ningún libro") }
-            items(state.books, key = { "book-${it.id}" }) { book -> BookCard(book, onClick = { onBookClick(book.id) }) }
-            item { Text("Valoraciones", style = MaterialTheme.typography.titleMedium) }
-            items(state.ratings, key = { "rating-${it.id}" }) { rating ->
-                Text("★ ${rating.score} · @${rating.raterNickname}${rating.comment?.let { ": $it" }.orEmpty()}")
+            items(state.books, key = { "book-${it.id}" }) { book -> BookTile(book, onClick = { onBookClick(book.id) }, showOwner = false) }
+            item(span = { GridItemSpan(maxLineSpan) }) { SectionTitle("Valoraciones") }
+            if (state.ratings.isEmpty()) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        "Cuando completes un intercambio, la otra persona podrá valorarte.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-            item { TextButton(onClick = viewModel::signOut) { Text("Cerrar sesión") } }
+            items(state.ratings, key = { "rating-${it.id}" }, span = { GridItemSpan(maxLineSpan) }) { RatingCard(it) }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                GhostButton("Cerrar sesión", viewModel::signOut)
+            }
         }
     }
 }
 
-/** Approximate location is enough: the search works in kilometres. */
-@SuppressLint("MissingPermission") // only called after the permission is granted
-private suspend fun fetchLocation(context: Context, onResult: (Double, Double) -> Unit, onError: () -> Unit) {
-    val client = LocationServices.getFusedLocationProviderClient(context)
-    try {
-        val location = client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null).await()
-        if (location != null) onResult(location.latitude, location.longitude) else onError()
-    } catch (e: Exception) {
-        if (e is kotlinx.coroutines.CancellationException) throw e
-        onError()
+@Composable
+private fun ProfileHeader(profile: MyProfileDto, onChangeLocation: () -> Unit) {
+    BkCard(Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Avatar(profile.nickname, size = 64)
+                Column(Modifier.weight(1f)) {
+                    Text("@${profile.nickname}", style = MaterialTheme.typography.titleLarge)
+                    profile.displayName?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    val rating = profile.rating
+                    if (rating.count > 0 && rating.average != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Stars(rating.average)
+                            Text(
+                                " ${String.format(Locale.forLanguageTag("es"), "%.1f", rating.average)} · ${rating.count} valoraciones",
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
+                    } else {
+                        Text("Sin valoraciones todavía", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Place, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(
+                    profile.locationLabel ?: "Ubicación sin nombre",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                SecondaryButton("Cambiar", onChangeLocation)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RatingCard(rating: RatingDto) {
+    BkCard(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Stars(rating.score.toDouble())
+            Text("@${rating.raterNickname}", style = MaterialTheme.typography.titleSmall)
+        }
+        rating.comment?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+    }
+}
+
+@Composable
+private fun Stars(value: Double) {
+    Row {
+        (1..5).forEach { i ->
+            Icon(
+                if (i <= Math.round(value)) Icons.Default.Star else Icons.Default.StarBorder,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }

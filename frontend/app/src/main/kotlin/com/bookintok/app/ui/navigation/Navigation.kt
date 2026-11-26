@@ -29,6 +29,10 @@ import com.bookintok.app.ui.books.BookEditorScreen
 import com.bookintok.app.ui.books.BookListScreen
 import com.bookintok.app.ui.chat.ChatScreen
 import com.bookintok.app.ui.exchanges.ExchangeListScreen
+import com.bookintok.app.ui.location.LocationScreen
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBarItemDefaults
 import com.bookintok.app.ui.profile.ProfileScreen
 import kotlinx.serialization.Serializable
 
@@ -53,6 +57,9 @@ data class BookEditorRoute(val id: Long? = null)
 @Serializable
 data class ChatRoute(val exchangeId: Long)
 
+@Serializable
+data object LocationRoute
+
 private data class Tab(val route: Any, val label: String, val icon: ImageVector)
 
 private val tabs = listOf(
@@ -68,11 +75,17 @@ fun BookintokNavHost() {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val destination = backStackEntry?.destination
     val onTab = tabs.any { tab -> destination?.hasRoute(tab.route::class) == true }
+    val title = when {
+        destination?.hasRoute(LocationRoute::class) == true -> "Tu ubicación"
+        destination?.hasRoute(ChatRoute::class) == true -> "Chat"
+        onTab -> "BookinTok"
+        else -> ""
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("BookinTok") },
+                title = { Text(title, style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     if (!onTab && navController.previousBackStackEntry != null) {
                         IconButton(onClick = { navController.navigateUp() }) {
@@ -80,10 +93,11 @@ fun BookintokNavHost() {
                         }
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
         bottomBar = {
-            if (onTab) NavigationBar {
+            if (onTab) NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest) {
                 tabs.forEach { tab ->
                     NavigationBarItem(
                         selected = destination?.hasRoute(tab.route::class) == true,
@@ -95,7 +109,12 @@ fun BookintokNavHost() {
                             }
                         },
                         icon = { Icon(tab.icon, contentDescription = null) },
-                        label = { Text(tab.label) },
+                        label = { Text(tab.label, style = MaterialTheme.typography.labelMedium) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                            indicatorColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        ),
                     )
                 }
             }
@@ -112,7 +131,10 @@ fun BookintokNavHost() {
                 ExchangeListScreen(onOpenChat = { navController.navigate(ChatRoute(it)) })
             }
             composable<ProfileRoute> {
-                ProfileScreen(onBookClick = { navController.navigate(BookDetailRoute(it)) })
+                ProfileScreen(
+                    onBookClick = { navController.navigate(BookDetailRoute(it)) },
+                    onChangeLocation = { navController.navigate(LocationRoute) },
+                )
             }
             composable<BookDetailRoute> {
                 BookDetailScreen(
@@ -128,6 +150,11 @@ fun BookintokNavHost() {
                 })
             }
             composable<ChatRoute> { ChatScreen() }
+            composable<LocationRoute> {
+                // Inside the app the top bar provides the back button and the system bar insets
+                LocationScreen(onDone = { navController.popBackStack() }, applyInsets = false)
+            }
         }
     }
 }
+

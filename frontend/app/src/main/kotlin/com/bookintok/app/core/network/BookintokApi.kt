@@ -9,7 +9,11 @@ import io.ktor.client.request.parameter
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -76,6 +80,29 @@ class BookintokApi @Inject constructor(
 
     suspend fun deleteBook(id: Long) {
         send(HttpMethod.Delete, "/api/v1/books/$id")
+    }
+
+    /** [jpeg] is already compressed on the device; the server re-encodes it anyway. */
+    suspend fun uploadBookImage(id: Long, jpeg: ByteArray): BookDto =
+        send(HttpMethod.Put, "/api/v1/books/$id/image") {
+            setBody(
+                MultiPartFormDataContent(
+                    formData {
+                        append(
+                            "file",
+                            jpeg,
+                            Headers.build {
+                                append(HttpHeaders.ContentType, "image/jpeg")
+                                append(HttpHeaders.ContentDisposition, "filename=\"cover.jpg\"")
+                            },
+                        )
+                    },
+                ),
+            )
+        }.body()
+
+    suspend fun deleteBookImage(id: Long) {
+        send(HttpMethod.Delete, "/api/v1/books/$id/image")
     }
 
     // Exchanges

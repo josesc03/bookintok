@@ -1,22 +1,42 @@
 package com.bookintok.app.ui.books
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
@@ -24,12 +44,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import coil3.compose.AsyncImage
+import com.bookintok.app.core.image.ImageCompressor
 import com.bookintok.app.core.network.BookCondition
 import com.bookintok.app.core.network.BookRequest
 import com.bookintok.app.core.network.CoverType
 import com.bookintok.app.data.BookRepository
 import com.bookintok.app.ui.common.label
 import com.bookintok.app.ui.common.toUserMessage
+import com.bookintok.app.ui.components.FormField
+import com.bookintok.app.ui.components.GhostButton
+import com.bookintok.app.ui.components.PrimaryButton
+import com.bookintok.app.ui.components.apiImageUrl
 import com.bookintok.app.ui.navigation.BookEditorRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,8 +86,19 @@ data class BookForm(
     )
 }
 
+/** The photo as the editor sees it: kept as is, newly picked, or removed. */
+sealed interface PhotoState {
+    data object None : PhotoState
+
+    data class Existing(val url: String) : PhotoState
+
+    data class Picked(val uri: Uri) : PhotoState
+}
+
 data class BookEditorUiState(
     val form: BookForm = BookForm(),
+    val photo: PhotoState = PhotoState.None,
+    val hadPhoto: Boolean = false,
     val isEdit: Boolean = false,
     val saving: Boolean = false,
     val error: String? = null,
@@ -72,6 +109,7 @@ data class BookEditorUiState(
 class BookEditorViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val books: BookRepository,
+    private val compressor: ImageCompressor,
 ) : ViewModel() {
     private val bookId = savedStateHandle.toRoute<BookEditorRoute>().id
     private val _state = MutableStateFlow(BookEditorUiState(isEdit = bookId != null))
@@ -82,7 +120,11 @@ class BookEditorViewModel @Inject constructor(
             try {
                 val book = books.book(bookId)
                 _state.update {
-                    it.copy(form = BookForm(book.title, book.author, book.description.orEmpty(), book.mainCategory, book.language, book.coverType, book.condition))
+                    it.copy(
+                        form = BookForm(book.title, book.author, book.description.orEmpty(), book.mainCategory, book.language, book.coverType, book.condition),
+                        photo = book.imageUrl?.let(PhotoState::Existing) ?: PhotoState.None,
+                        hadPhoto = book.imageUrl != null,
+                    )
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.toUserMessage()) }
@@ -92,16 +134,26 @@ class BookEditorViewModel @Inject constructor(
 
     fun update(transform: (BookForm) -> BookForm) = _state.update { it.copy(form = transform(it.form), error = null) }
 
+    fun pickPhoto(uri: Uri) = _state.update { it.copy(photo = PhotoState.Picked(uri)) }
+
+    fun removePhoto() = _state.update { it.copy(photo = PhotoState.None) }
+
+    /** Saves the book first and then the photo, so a failed upload never loses the book data. */
     fun save() {
-        val form = _state.value.form
-        if (!form.isValid) {
+        val current = _state.value
+        if (!current.form.isValid) {
             _state.update { it.copy(error = "Título, autor, categoría e idioma son obligatorios") }
             return
         }
         _state.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
             try {
-                val saved = books.save(bookId, form.toRequest())
+                val saved = books.save(bookId, current.form.toRequest())
+                when (val photo = current.photo) {
+                    is PhotoState.Picked -> books.uploadImage(saved.id, compressor.compress(photo.uri))
+                    PhotoState.None -> if (current.hadPhoto) books.deleteImage(saved.id)
+                    is PhotoState.Existing -> Unit
+                }
                 _state.update { it.copy(savedId = saved.id) }
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.toUserMessage()) }
@@ -118,57 +170,100 @@ fun BookEditorScreen(onSaved: (Long) -> Unit, viewModel: BookEditorViewModel = h
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.savedId) { state.savedId?.let(onSaved) }
     val form = state.form
+    // System photo picker: no storage permission needed
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> uri?.let(viewModel::pickPhoto) }
 
     Column(
-        Modifier.verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(if (state.isEdit) "Editar libro" else "Publicar un libro", style = MaterialTheme.typography.headlineSmall)
-        Field("Título", form.title) { v -> viewModel.update { it.copy(title = v) } }
-        Field("Autor", form.author) { v -> viewModel.update { it.copy(author = v) } }
-        Field("Categoría", form.category) { v -> viewModel.update { it.copy(category = v) } }
-        Field("Idioma", form.language) { v -> viewModel.update { it.copy(language = v) } }
-        OutlinedTextField(
-            value = form.description,
-            onValueChange = { v -> viewModel.update { it.copy(description = v) } },
-            label = { Text("Descripción (opcional)") },
+        Text(if (state.isEdit) "Editar libro" else "Publicar un libro", style = MaterialTheme.typography.headlineMedium)
+
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            PhotoSlot(state.photo, onPick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Foto de la portada", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Una foto real del libro ayuda a que te lo pidan. Quitamos los datos de ubicación de la imagen.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (state.photo != PhotoState.None) GhostButton("Quitar foto", viewModel::removePhoto)
+            }
+        }
+
+        FormField("Título", form.title, { v -> viewModel.update { it.copy(title = v) } }, placeholder = "Dune")
+        FormField("Autor", form.author, { v -> viewModel.update { it.copy(author = v) } }, placeholder = "Frank Herbert")
+        FormField("Categoría", form.category, { v -> viewModel.update { it.copy(category = v) } }, placeholder = "Novela, ensayo, cómic…")
+        FormField("Idioma", form.language, { v -> viewModel.update { it.copy(language = v) } })
+        FormField(
+            "Descripción (opcional)",
+            form.description,
+            { v -> viewModel.update { it.copy(description = v) } },
+            placeholder = "Edición, estado, si tiene anotaciones…",
+            singleLine = false,
             minLines = 3,
-            modifier = Modifier.fillMaxWidth(),
         )
-        Text("Estado", style = MaterialTheme.typography.titleSmall)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BookCondition.entries.forEach { condition ->
-                FilterChip(
-                    selected = form.condition == condition,
-                    onClick = { viewModel.update { it.copy(condition = condition) } },
-                    label = { Text(condition.label) },
-                )
-            }
-        }
-        Text("Cubierta", style = MaterialTheme.typography.titleSmall)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CoverType.entries.forEach { cover ->
-                FilterChip(
-                    selected = form.coverType == cover,
-                    onClick = { viewModel.update { it.copy(coverType = cover) } },
-                    label = { Text(cover.label) },
-                )
-            }
-        }
-        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(onClick = viewModel::save, enabled = !state.saving, modifier = Modifier.fillMaxWidth()) {
-            Text(if (state.isEdit) "Guardar cambios" else "Publicar")
-        }
+
+        ChoiceGroup("Estado", BookCondition.entries, form.condition, { it.label }) { c -> viewModel.update { it.copy(condition = c) } }
+        ChoiceGroup("Cubierta", CoverType.entries, form.coverType, { it.label }) { c -> viewModel.update { it.copy(coverType = c) } }
+
+        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        PrimaryButton(
+            if (state.isEdit) "Guardar cambios" else "Publicar",
+            onClick = viewModel::save,
+            loading = state.saving,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+        )
     }
 }
 
 @Composable
-private fun Field(label: String, value: String, onChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        label = { Text(label) },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
+private fun PhotoSlot(photo: PhotoState, onPick: () -> Unit) {
+    val model: Any? = when (photo) {
+        is PhotoState.Picked -> photo.uri
+        is PhotoState.Existing -> apiImageUrl(photo.url)
+        PhotoState.None -> null
+    }
+    Box(
+        Modifier
+            .width(110.dp)
+            .aspectRatio(3f / 4f)
+            .clip(MaterialTheme.shapes.medium)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), MaterialTheme.shapes.medium)
+            .clickable(onClick = onPick),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (model != null) {
+            AsyncImage(model, contentDescription = "Foto del libro", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Default.AddAPhoto, contentDescription = null, modifier = Modifier.size(28.dp))
+                Text("Añadir foto", style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun <T> ChoiceGroup(title: String, options: List<T>, selected: T, label: (T) -> String, onSelect: (T) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, style = MaterialTheme.typography.titleSmall)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEach { option ->
+                FilterChip(
+                    selected = option == selected,
+                    onClick = { onSelect(option) },
+                    label = { Text(label(option)) },
+                    shape = MaterialTheme.shapes.small,
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                )
+            }
+        }
+    }
 }

@@ -25,7 +25,8 @@ interface UserRepository {
 
     suspend fun register(nickname: String, displayName: String?): MyProfileDto
 
-    suspend fun updateLocation(latitude: Double, longitude: Double)
+    /** [label] is the place name shown to other users (municipality or province). */
+    suspend fun updateLocation(latitude: Double, longitude: Double, label: String?)
 
     suspend fun publicProfile(uid: String): PublicProfileDto
 
@@ -47,6 +48,10 @@ interface BookRepository {
     suspend fun save(id: Long?, request: BookRequest): BookDto
 
     suspend fun delete(id: Long)
+
+    suspend fun uploadImage(id: Long, jpeg: ByteArray): BookDto
+
+    suspend fun deleteImage(id: Long)
 }
 
 @Singleton
@@ -65,8 +70,8 @@ class DefaultUserRepository @Inject constructor(
     override suspend fun register(nickname: String, displayName: String?) =
         api.register(RegisterUserRequest(nickname.trim(), displayName?.trim()?.ifEmpty { null }))
 
-    override suspend fun updateLocation(latitude: Double, longitude: Double) =
-        api.updateLocation(UpdateLocationRequest(latitude, longitude))
+    override suspend fun updateLocation(latitude: Double, longitude: Double, label: String?) =
+        api.updateLocation(UpdateLocationRequest(latitude, longitude, label))
 
     override suspend fun publicProfile(uid: String) = api.publicProfile(uid)
 
@@ -94,4 +99,8 @@ class DefaultBookRepository @Inject constructor(private val api: BookintokApi) :
         if (id == null) api.createBook(request) else api.updateBook(id, request)
 
     override suspend fun delete(id: Long) = api.deleteBook(id)
+
+    override suspend fun uploadImage(id: Long, jpeg: ByteArray) = api.uploadBookImage(id, jpeg)
+
+    override suspend fun deleteImage(id: Long) = api.deleteBookImage(id)
 }

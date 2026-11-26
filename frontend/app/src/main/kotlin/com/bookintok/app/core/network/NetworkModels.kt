@@ -17,6 +17,7 @@ data class MyProfileDto(
     val imageUrl: String? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
+    val locationLabel: String? = null,
     val rating: RatingSummaryDto = RatingSummaryDto(),
 )
 
@@ -33,7 +34,7 @@ data class PublicProfileDto(
 data class RegisterUserRequest(val nickname: String, val displayName: String? = null)
 
 @Serializable
-data class UpdateLocationRequest(val latitude: Double, val longitude: Double)
+data class UpdateLocationRequest(val latitude: Double, val longitude: Double, val label: String? = null)
 
 @Serializable
 enum class CoverType { HARDCOVER, PAPERBACK }
@@ -45,7 +46,7 @@ enum class BookCondition { NEW, LIKE_NEW, USED, WORN }
 enum class BookStatus { AVAILABLE, EXCHANGED }
 
 @Serializable
-data class BookOwnerDto(val uid: String, val nickname: String, val imageUrl: String? = null)
+data class BookOwnerDto(val uid: String, val nickname: String, val imageUrl: String? = null, val locationLabel: String? = null)
 
 @Serializable
 data class BookDto(
@@ -61,6 +62,8 @@ data class BookDto(
     val status: BookStatus,
     val imageUrl: String? = null,
     val owner: BookOwnerDto,
+    /** Approximate distance from the signed-in user, in whole kilometres. */
+    val distanceKm: Int? = null,
     val createdAt: String,
 )
 
@@ -74,7 +77,6 @@ data class BookRequest(
     val language: String,
     val coverType: CoverType,
     val condition: BookCondition,
-    val imageUrl: String? = null,
 )
 
 @Serializable

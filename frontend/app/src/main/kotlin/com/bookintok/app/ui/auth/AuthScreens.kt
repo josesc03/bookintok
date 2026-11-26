@@ -1,184 +1,96 @@
 package com.bookintok.app.ui.auth
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MarkEmailUnread
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import com.bookintok.app.BuildConfig
-import com.bookintok.app.core.auth.AuthRepository
-import com.bookintok.app.core.auth.GoogleSignInCancelledException
 import com.bookintok.app.core.auth.requestGoogleIdToken
-import com.bookintok.app.data.UserRepository
-import com.bookintok.app.ui.common.toUserMessage
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-
-data class LoginUiState(
-    val email: String = "",
-    val password: String = "",
-    val isSignUp: Boolean = false,
-    val loading: Boolean = false,
-    val error: String? = null,
-)
-
-@HiltViewModel
-class LoginViewModel @Inject constructor(private val auth: AuthRepository) : ViewModel() {
-    private val _state = MutableStateFlow(LoginUiState())
-    val state = _state.asStateFlow()
-
-    fun onEmail(value: String) = _state.update { it.copy(email = value, error = null) }
-
-    fun onPassword(value: String) = _state.update { it.copy(password = value, error = null) }
-
-    fun toggleMode() = _state.update { it.copy(isSignUp = !it.isSignUp, error = null) }
-
-    /** [requestToken] shows Google's account picker; it lives in the UI because it needs the Activity. */
-    fun signInWithGoogle(requestToken: suspend () -> String) {
-        _state.update { it.copy(loading = true, error = null) }
-        viewModelScope.launch {
-            try {
-                auth.signInWithGoogle(requestToken())
-            } catch (_: GoogleSignInCancelledException) {
-                // The user closed the picker: nothing to report
-            } catch (e: Exception) {
-                _state.update { it.copy(error = e.toUserMessage()) }
-            } finally {
-                _state.update { it.copy(loading = false) }
-            }
-        }
-    }
-
-    /** On success the session flow notices the signed-in user and moves on. */
-    fun submit() {
-        val current = _state.value
-        if (current.email.isBlank() || current.password.length < 6) {
-            _state.update { it.copy(error = "Introduce tu email y una contraseña de al menos 6 caracteres") }
-            return
-        }
-        _state.update { it.copy(loading = true, error = null) }
-        viewModelScope.launch {
-            try {
-                if (current.isSignUp) auth.signUp(current.email.trim(), current.password)
-                else auth.signIn(current.email.trim(), current.password)
-            } catch (e: Exception) {
-                _state.update { it.copy(error = e.toUserMessage()) }
-            } finally {
-                _state.update { it.copy(loading = false) }
-            }
-        }
-    }
-}
+import com.bookintok.app.ui.components.FormField
+import com.bookintok.app.ui.components.GhostButton
+import com.bookintok.app.ui.components.PrimaryButton
+import com.bookintok.app.ui.components.SecondaryButton
 
 @Composable
 fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     FormColumn {
-        Text("BookinTok", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.primary)
-        Text("Intercambia libros con gente cerca de ti", style = MaterialTheme.typography.bodyLarge)
-        OutlinedTextField(
-            value = state.email,
-            onValueChange = viewModel::onEmail,
-            label = { Text("Email") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth(),
+        Logo()
+        Text(
+            if (state.isSignUp) "Crea tu cuenta" else "Hola de nuevo",
+            style = MaterialTheme.typography.headlineLarge,
         )
-        OutlinedTextField(
-            value = state.password,
-            onValueChange = viewModel::onPassword,
-            label = { Text("Contraseña") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
+        Text(
+            if (state.isSignUp) "Empieza a intercambiar libros con gente cerca de ti." else "Entra para ver los libros que tienes cerca.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(onClick = viewModel::submit, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) {
-            if (state.loading) CircularProgressIndicator(Modifier.padding(2.dp)) else Text(if (state.isSignUp) "Crear cuenta" else "Entrar")
-        }
-        TextButton(onClick = viewModel::toggleMode) {
-            Text(if (state.isSignUp) "Ya tengo cuenta" else "¿No tienes cuenta? Regístrate")
-        }
-        Text("o", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        val context = LocalContext.current
-        OutlinedButton(
+        SecondaryButton(
+            "Continuar con Google",
             onClick = { viewModel.signInWithGoogle { requestGoogleIdToken(context, BuildConfig.GOOGLE_WEB_CLIENT_ID) } },
             enabled = !state.loading,
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Continuar con Google") }
-    }
-}
-
-data class VerifyEmailUiState(val working: Boolean = false, val message: String? = null, val verified: Boolean = false)
-
-@HiltViewModel
-class VerifyEmailViewModel @Inject constructor(
-    private val auth: AuthRepository,
-    private val users: UserRepository,
-) : ViewModel() {
-    private val _state = MutableStateFlow(VerifyEmailUiState())
-    val state = _state.asStateFlow()
-
-    /** Called when the user says they clicked the link: asks Firebase whether it is verified now. */
-    fun check() = work {
-        val user = auth.reloadUser()
-        if (user?.emailVerified == true) {
-            _state.update { it.copy(verified = true) }
-        } else {
-            _state.update { it.copy(message = "Todavía no aparece como verificado. Abre el enlace del correo e inténtalo de nuevo.") }
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HorizontalDivider(Modifier.weight(1f))
+            Text("o con tu email", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            HorizontalDivider(Modifier.weight(1f))
         }
-    }
-
-    fun resend() = work {
-        auth.sendVerificationEmail()
-        _state.update { it.copy(message = "Te hemos enviado otro correo. Revisa también la carpeta de spam.") }
-    }
-
-    fun signOut() = work { users.signOut() }
-
-    private fun work(block: suspend () -> Unit) {
-        _state.update { it.copy(working = true, message = null) }
-        viewModelScope.launch {
-            try {
-                block()
-            } catch (e: Exception) {
-                _state.update { it.copy(message = e.toUserMessage()) }
-            } finally {
-                _state.update { it.copy(working = false) }
-            }
-        }
+        FormField("Email", state.email, viewModel::onEmail, placeholder = "tu@email.com", keyboardType = KeyboardType.Email)
+        FormField(
+            "Contraseña",
+            state.password,
+            viewModel::onPassword,
+            placeholder = "Al menos 6 caracteres",
+            keyboardType = KeyboardType.Password,
+            visualTransformation = PasswordVisualTransformation(),
+        )
+        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        PrimaryButton(
+            if (state.isSignUp) "Crear cuenta" else "Entrar",
+            onClick = viewModel::submit,
+            loading = state.loading,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        GhostButton(
+            if (state.isSignUp) "Ya tengo cuenta" else "¿No tienes cuenta? Regístrate",
+            onClick = viewModel::toggleMode,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
     }
 }
 
@@ -187,60 +99,20 @@ fun VerifyEmailScreen(email: String?, onVerified: () -> Unit, viewModel: VerifyE
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.verified) { if (state.verified) onVerified() }
     FormColumn {
-        Text("Verifica tu correo", style = MaterialTheme.typography.headlineMedium)
+        Box(
+            Modifier.size(72.dp).clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Default.MarkEmailUnread, contentDescription = null, modifier = Modifier.size(36.dp)) }
+        Text("Revisa tu correo", style = MaterialTheme.typography.headlineLarge)
         Text(
             "Te hemos enviado un enlace a ${email ?: "tu correo"}. Ábrelo para activar tu cuenta y vuelve aquí.",
-            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center) }
-        Button(onClick = viewModel::check, enabled = !state.working, modifier = Modifier.fillMaxWidth()) {
-            Text("Ya lo he verificado")
-        }
-        OutlinedButton(onClick = viewModel::resend, enabled = !state.working, modifier = Modifier.fillMaxWidth()) {
-            Text("Reenviar el correo")
-        }
-        TextButton(onClick = viewModel::signOut, enabled = !state.working) { Text("Usar otra cuenta") }
-    }
-}
-
-data class ProfileSetupUiState(
-    val nickname: String = "",
-    val displayName: String = "",
-    val loading: Boolean = false,
-    val error: String? = null,
-    val done: Boolean = false,
-)
-
-@HiltViewModel
-class ProfileSetupViewModel @Inject constructor(private val users: UserRepository) : ViewModel() {
-    private val _state = MutableStateFlow(ProfileSetupUiState())
-    val state = _state.asStateFlow()
-
-    fun onNickname(value: String) = _state.update { it.copy(nickname = value, error = null) }
-
-    fun onDisplayName(value: String) = _state.update { it.copy(displayName = value) }
-
-    fun submit() {
-        val nickname = _state.value.nickname.trim()
-        if (!NICKNAME.matches(nickname)) {
-            _state.update { it.copy(error = "Entre 3 y 30 caracteres: letras, números, '_' o '.'") }
-            return
-        }
-        _state.update { it.copy(loading = true, error = null) }
-        viewModelScope.launch {
-            try {
-                users.register(nickname, _state.value.displayName)
-                _state.update { it.copy(done = true) }
-            } catch (e: Exception) {
-                _state.update { it.copy(error = e.toUserMessage()) }
-            } finally {
-                _state.update { it.copy(loading = false) }
-            }
-        }
-    }
-
-    private companion object {
-        val NICKNAME = Regex("^[a-zA-Z0-9_.]{3,30}$")
+        state.message?.let { Notice(it) }
+        PrimaryButton("Ya lo he verificado", onClick = viewModel::check, loading = state.working, modifier = Modifier.fillMaxWidth())
+        SecondaryButton("Reenviar el correo", onClick = viewModel::resend, enabled = !state.working, modifier = Modifier.fillMaxWidth())
+        GhostButton("Usar otra cuenta", onClick = viewModel::signOut, enabled = !state.working, modifier = Modifier.align(Alignment.CenterHorizontally))
     }
 }
 
@@ -249,37 +121,53 @@ fun ProfileSetupScreen(onCreated: () -> Unit, viewModel: ProfileSetupViewModel =
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.done) { if (state.done) onCreated() }
     FormColumn {
-        Text("Crea tu perfil", style = MaterialTheme.typography.headlineMedium)
-        Text("Así te verán los demás cuando intercambies libros.")
-        OutlinedTextField(
-            value = state.nickname,
-            onValueChange = viewModel::onNickname,
-            label = { Text("Nombre de usuario") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+        Text("Crea tu perfil", style = MaterialTheme.typography.headlineLarge)
+        Text(
+            "Así te verán los demás cuando intercambies libros.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        OutlinedTextField(
-            value = state.displayName,
-            onValueChange = viewModel::onDisplayName,
-            label = { Text("Nombre (opcional)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+        FormField(
+            "Nombre de usuario",
+            state.nickname,
+            viewModel::onNickname,
+            placeholder = "por ejemplo, ana_lee",
+            error = state.error,
         )
-        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(onClick = viewModel::submit, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) {
-            Text("Continuar")
-        }
+        FormField("Nombre (opcional)", state.displayName, viewModel::onDisplayName, placeholder = "Cómo quieres que te llamen")
+        PrimaryButton("Continuar", onClick = viewModel::submit, loading = state.loading, modifier = Modifier.fillMaxWidth())
     }
 }
 
-/** Centered form that shrinks above the keyboard and scrolls when it does not fit. */
 @Composable
-private fun FormColumn(content: @Composable () -> Unit) {
-    Box(Modifier.fillMaxSize().systemBarsPadding().imePadding(), contentAlignment = Alignment.Center) {
+private fun Logo() {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(
+            Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Default.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp)) }
+        Text("BookinTok", style = MaterialTheme.typography.titleLarge)
+    }
+}
+
+@Composable
+private fun Notice(text: String) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.medium) {
+        Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(12.dp), textAlign = TextAlign.Start)
+    }
+}
+
+/** Left-aligned form that stays above the keyboard and scrolls when it does not fit. */
+@Composable
+private fun FormColumn(content: @Composable ColumnScope.() -> Unit) {
+    Box(
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding().imePadding(),
+        contentAlignment = Alignment.Center,
+    ) {
         Column(
-            Modifier.verticalScroll(rememberScrollState()).padding(24.dp),
+            Modifier.widthIn(max = 480.dp).verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) { content() }
+            content = content,
+        )
     }
 }

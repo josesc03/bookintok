@@ -32,6 +32,25 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import com.bookintok.app.core.network.ExchangeStatus
+import com.bookintok.app.ui.components.Badge
+import com.bookintok.app.ui.components.BkCard
+import com.bookintok.app.ui.components.BookCover
+import com.bookintok.app.ui.components.EmptyState
 
 data class ConversationItem(val exchange: Exchange, val counterpart: String, val lastMessage: String?)
 
@@ -87,23 +106,45 @@ fun ExchangeListScreen(onOpenChat: (Long) -> Unit, viewModel: ExchangeListViewMo
     Column(Modifier.fillMaxSize()) {
         if (state.offline) InfoBanner("Sin conexión: mostrando tus conversaciones guardadas")
         PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = viewModel::refresh) {
-            if (state.items.isEmpty() && !state.refreshing) {
-                MessageBox("Aún no tienes intercambios. Busca un libro y pulsa «Lo quiero».")
-            } else {
-                LazyColumn(Modifier.fillMaxSize()) {
-                    items(state.items, key = { it.exchange.id }) { item ->
-                        ListItem(
-                            headlineContent = { Text(item.exchange.bookTitle, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            supportingContent = {
-                                Text(item.lastMessage ?: "@${item.counterpart}", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            },
-                            trailingContent = { Text(item.exchange.status.label) },
-                            modifier = Modifier.clickable { onOpenChat(item.exchange.id) },
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item { Text("Tus intercambios", style = MaterialTheme.typography.headlineMedium) }
+                if (state.items.isEmpty() && !state.refreshing) {
+                    item {
+                        EmptyState(
+                            Icons.AutoMirrored.Filled.Chat,
+                            "Aún no tienes conversaciones",
+                            "Cuando pidas un libro o alguien pida uno tuyo, el chat aparecerá aquí.",
                         )
-                        HorizontalDivider()
                     }
                 }
+                items(state.items, key = { it.exchange.id }) { item -> ConversationCard(item, onClick = { onOpenChat(item.exchange.id) }) }
             }
         }
     }
 }
+
+@Composable
+private fun ConversationCard(item: ConversationItem, onClick: () -> Unit) {
+    BkCard(onClick = onClick, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            BookCover(item.exchange.bookTitle, item.exchange.bookImageUrl, Modifier.width(48.dp).aspectRatio(3f / 4f))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(item.exchange.bookTitle, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("con @${item.counterpart}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    item.lastMessage ?: "Todavía no hay mensajes",
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Badge(item.exchange.status.label, emphasized = item.exchange.status == ExchangeStatus.PENDING)
+        }
+    }
+}
+
