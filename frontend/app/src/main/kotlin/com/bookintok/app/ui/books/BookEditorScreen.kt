@@ -53,6 +53,15 @@ import com.bookintok.app.data.BookRepository
 import com.bookintok.app.ui.common.label
 import com.bookintok.app.ui.common.toUserMessage
 import com.bookintok.app.ui.components.FormField
+import com.bookintok.app.ui.components.SelectField
+import com.bookintok.app.ui.components.BottomActionBar
+import com.bookintok.app.core.catalog.BookCatalog
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.Close
 import com.bookintok.app.ui.components.GhostButton
 import com.bookintok.app.ui.components.PrimaryButton
 import com.bookintok.app.ui.components.apiImageUrl
@@ -164,21 +173,39 @@ class BookEditorViewModel @Inject constructor(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun BookEditorScreen(onSaved: (Long) -> Unit, viewModel: BookEditorViewModel = hiltViewModel()) {
+fun BookEditorScreen(onClose: () -> Unit, onSaved: (Long) -> Unit, viewModel: BookEditorViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.savedId) { state.savedId?.let(onSaved) }
     val form = state.form
     // System photo picker: no storage permission needed
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> uri?.let(viewModel::pickPhoto) }
 
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Text(if (state.isEdit) "Editar libro" else "Publicar libro") },
+                navigationIcon = { IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "Cerrar") } },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        },
+        bottomBar = {
+            BottomActionBar {
+                PrimaryButton(
+                    if (state.isEdit) "Guardar cambios" else "Publicar",
+                    onClick = viewModel::save,
+                    loading = state.saving,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+    ) { padding ->
     Column(
-        Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        Text(if (state.isEdit) "Editar libro" else "Publicar un libro", style = MaterialTheme.typography.headlineMedium)
-
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
             PhotoSlot(state.photo, onPick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -194,8 +221,20 @@ fun BookEditorScreen(onSaved: (Long) -> Unit, viewModel: BookEditorViewModel = h
 
         FormField("Título", form.title, { v -> viewModel.update { it.copy(title = v) } }, placeholder = "Dune")
         FormField("Autor", form.author, { v -> viewModel.update { it.copy(author = v) } }, placeholder = "Frank Herbert")
-        FormField("Categoría", form.category, { v -> viewModel.update { it.copy(category = v) } }, placeholder = "Novela, ensayo, cómic…")
-        FormField("Idioma", form.language, { v -> viewModel.update { it.copy(language = v) } })
+        SelectField(
+            label = "Categoría",
+            value = form.category,
+            options = BookCatalog.CATEGORIES,
+            onValueChange = { v -> viewModel.update { it.copy(category = v) } },
+            placeholder = "Elige una categoría",
+            otherOption = BookCatalog.OTHER,
+        )
+        SelectField(
+            label = "Idioma",
+            value = form.language,
+            options = BookCatalog.LANGUAGES,
+            onValueChange = { v -> viewModel.update { it.copy(language = v) } },
+        )
         FormField(
             "Descripción (opcional)",
             form.description,
@@ -209,12 +248,7 @@ fun BookEditorScreen(onSaved: (Long) -> Unit, viewModel: BookEditorViewModel = h
         ChoiceGroup("Cubierta", CoverType.entries, form.coverType, { it.label }) { c -> viewModel.update { it.copy(coverType = c) } }
 
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-        PrimaryButton(
-            if (state.isEdit) "Guardar cambios" else "Publicar",
-            onClick = viewModel::save,
-            loading = state.saving,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-        )
+    }
     }
 }
 
@@ -231,7 +265,7 @@ private fun PhotoSlot(photo: PhotoState, onPick: () -> Unit) {
             .aspectRatio(3f / 4f)
             .clip(MaterialTheme.shapes.medium)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), MaterialTheme.shapes.medium)
+            .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f), MaterialTheme.shapes.medium)
             .clickable(onClick = onPick),
         contentAlignment = Alignment.Center,
     ) {

@@ -26,7 +26,7 @@ sealed interface SessionState {
     /** Has a profile but has not told the app where they are yet. */
     data object NeedsLocation : SessionState
 
-    /** Signed in to Firebase but without a BookinTok profile yet. */
+    /** Signed in to Firebase but without a Bookintok profile yet. */
     data object NeedsProfile : SessionState
 
     /** [offline] is true when the profile could not be checked: cached chats are still usable. */

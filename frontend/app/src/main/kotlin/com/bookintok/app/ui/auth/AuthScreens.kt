@@ -146,7 +146,7 @@ private fun Logo() {
             Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary),
             contentAlignment = Alignment.Center,
         ) { Icon(Icons.Default.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp)) }
-        Text("BookinTok", style = MaterialTheme.typography.titleLarge)
+        Text("Bookintok", style = MaterialTheme.typography.titleLarge)
     }
 }
 

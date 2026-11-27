@@ -76,15 +76,20 @@ class BookListViewModelTest {
     }
 
     @Test
-    fun `selecting the same distance twice removes the filter`() {
+    fun `search starts at 5 km and filters replace the previous ones but keep the text`() {
         val books = FakeBooks()
         val viewModel = BookListViewModel(books)
+        assertEquals(5, books.searches.last().maxDistanceKm)
 
-        viewModel.onDistance(20)
-        assertEquals(20, books.searches.last().maxDistanceKm)
+        viewModel.onQuery("dune")
+        viewModel.applyFilters(BookSearch(languages = setOf("Inglés"), conditions = setOf(BookCondition.NEW), maxDistanceKm = 50))
 
-        viewModel.onDistance(20)
-        assertNull(books.searches.last().maxDistanceKm)
+        val search = books.searches.last()
+        assertEquals("dune", search.query)
+        assertEquals(setOf("Inglés"), search.languages)
+        assertEquals(50, search.maxDistanceKm)
+        assertEquals(2, search.activeFilters)
+        assertNull(search.category)
     }
 
     @Test

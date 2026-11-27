@@ -56,7 +56,7 @@ import kotlin.math.roundToInt
 
 /**
  * First screen: the brand and a vertical slider. Sliding the thumb all the way up enters the app,
- * as in the first version of BookinTok.
+ * as in the first version of Bookintok.
  */
 @Composable
 fun WelcomeScreen(onEnter: () -> Unit) {
@@ -76,7 +76,7 @@ fun WelcomeScreen(onEnter: () -> Unit) {
             Icon(Icons.Default.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(48.dp))
         }
         Spacer(Modifier.height(24.dp))
-        Text("BookinTok", style = MaterialTheme.typography.displayMedium, color = MaterialTheme.colorScheme.onBackground)
+        Text("Bookintok", style = MaterialTheme.typography.displayMedium, color = MaterialTheme.colorScheme.onBackground)
         Spacer(Modifier.height(12.dp))
         Text(
             "Intercambia libros,\nconecta historias",
@@ -115,7 +115,7 @@ private fun SlideUpToEnter(onEnter: () -> Unit) {
             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             .semantics {
                 role = Role.Button
-                contentDescription = "Entrar en BookinTok"
+                contentDescription = "Entrar en Bookintok"
                 onClick { onEnter(); true }
             }
             .pointerInput(Unit) {

@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+val DELETE_WINDOW: java.time.Duration = java.time.Duration.ofMinutes(30)
+
 data class ChatUiState(
     val myUid: String = "",
     val exchange: Exchange? = null,
@@ -36,9 +38,16 @@ data class ChatUiState(
     val canLoadOlder: Boolean = true,
     val rated: Boolean = false,
 ) {
-    val canSend get() = exchange?.isOpen == true && connection == ChatConnection.Connected && draft.isNotBlank()
+    /** Completed exchanges are read-only; cancelled ones stay open so people can still talk. */
+    val canWrite get() = exchange != null && exchange.status != ExchangeStatus.COMPLETED
+    val canSend get() = canWrite && connection == ChatConnection.Connected && draft.isNotBlank()
     val iConfirmed get() = exchange?.participant(myUid)?.confirmed == true
     val canRate get() = exchange?.status == ExchangeStatus.COMPLETED && !rated
+    val counterpart get() = exchange?.counterpartOf(myUid)
+
+    /** Users can take back their own messages during the first 30 minutes (the server checks it too). */
+    fun canDelete(message: ChatMessage, now: java.time.Instant = java.time.Instant.now()) =
+        message.senderUid == myUid && message.sentAt.isAfter(now.minus(DELETE_WINDOW)) && connection == ChatConnection.Connected
 
     /** Older messages can only exist once a full page has been loaded. */
     val showLoadOlder get() = canLoadOlder && messages.size >= DefaultChatRepository.PAGE_SIZE
@@ -116,6 +125,17 @@ class ChatViewModel @Inject constructor(
         exchanges.cancel(exchangeId)
         chat.notifyExchangeChanged(exchangeId)
     }
+
+    fun deleteMessage(messageId: String) = launchCatching { chat.deleteMessage(exchangeId, messageId) }
+
+    /** Archives the chat for this user (the other participant still sees it). */
+    fun toggleArchived() = launchCatching {
+        val archived = state.value.exchange?.archived ?: return@launchCatching
+        exchanges.setArchived(exchangeId, !archived)
+        local.update { it.copy(notice = if (archived) "Chat restaurado" else "Chat archivado") }
+    }
+
+    fun dismissNotice() = local.update { it.copy(notice = null) }
 
     fun rate(score: Int, comment: String?) = launchCatching {
         val exchange = state.value.exchange ?: return@launchCatching

@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.bookintok.app.R
 
 /**
- * BookinTok palette: the Hukly palette with every hue rotated by +113°, the turn that takes Hook
+ * Bookintok palette: the Hukly palette with every hue rotated by +113°, the turn that takes Hook
  * Orange to green. Saturation and lightness are kept, so warm tones become green and the cool
  * (navy/blue) tones become burgundy/pink. Names keep the Hukly role they come from.
  */
@@ -36,6 +36,9 @@ object BookintokColors {
     val Ink = Color(0xFF45202F) // Ink Navy
     val InkGray = Color(0xFF917382) // Cool Gray
     val Pink = Color(0xFFB55884) // Cool Accent
+
+    /** Darker green for small accents on light backgrounds, where the brand green is too light to read. */
+    val GreenDeep = Color(0xFF1E6B35)
 
     // Status colors are not brand colors: they stay as in Hukly
     val ErrorFg = Color(0xFFB42318)
