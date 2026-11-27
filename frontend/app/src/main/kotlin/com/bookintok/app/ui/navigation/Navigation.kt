@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -28,8 +30,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -71,8 +80,12 @@ data class BookDetailRoute(val id: Long)
 @Serializable
 data class BookEditorRoute(val id: Long? = null)
 
+/**
+ * [created]: the user just asked for the book, so the owner is told about the new chat.
+ * [existing]: the user asked again for a book they already had a chat about.
+ */
 @Serializable
-data class ChatRoute(val exchangeId: Long)
+data class ChatRoute(val exchangeId: Long, val created: Boolean = false, val existing: Boolean = false)
 
 @Serializable
 data object LocationRoute
@@ -97,8 +110,14 @@ private const val DURATION = 320
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun BookintokNavHost() {
+fun BookintokNavHost(inbox: InboxViewModel = hiltViewModel()) {
     val navController = rememberNavController()
+    val unread by inbox.unreadTotal.collectAsStateWithLifecycle()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle) {
+        // Realtime inbox only while the app is visible; push notifications cover the rest
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { inbox.runInbox() }
+    }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val destination = backStackEntry?.destination
     val onTab = tabs.any { destination?.hasRoute(it.routeClass) == true }
@@ -106,6 +125,7 @@ fun BookintokNavHost() {
     val nav = AppNavigator(
         openBook = { navController.navigate(BookDetailRoute(it)) },
         openChat = { navController.navigate(ChatRoute(it)) },
+        openRequestedChat = { id, created -> navController.navigate(ChatRoute(id, created = created, existing = !created)) },
         openUser = { navController.navigate(UserProfileRoute(it)) },
         editBook = { navController.navigate(BookEditorRoute(it)) },
         newBook = { navController.navigate(BookEditorRoute()) },
@@ -133,7 +153,20 @@ fun BookintokNavHost() {
                                     restoreState = true
                                 }
                             },
-                            icon = { Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null) },
+                            icon = {
+                                val count = if (tab.route == ExchangesRoute) unread else 0
+                                BadgedBox(
+                                    badge = {
+                                        if (count > 0) {
+                                            Badge(containerColor = BookintokColors.Pink, contentColor = Color.White) {
+                                                Text(if (count > 99) "99+" else count.toString())
+                                            }
+                                        }
+                                    },
+                                ) {
+                                    Icon(if (selected) tab.selectedIcon else tab.icon, contentDescription = null)
+                                }
+                            },
                             label = { Text(tab.label, style = MaterialTheme.typography.labelMedium) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = BookintokColors.Ink,
@@ -185,6 +218,8 @@ fun BookintokNavHost() {
 class AppNavigator(
     val openBook: (Long) -> Unit,
     val openChat: (Long) -> Unit,
+    /** After asking for a book: [created] false means the user already had a chat about it. */
+    val openRequestedChat: (Long, Boolean) -> Unit,
     val openUser: (String) -> Unit,
     val editBook: (Long) -> Unit,
     val newBook: () -> Unit,

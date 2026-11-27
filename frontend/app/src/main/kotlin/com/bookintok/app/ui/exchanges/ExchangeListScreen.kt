@@ -4,6 +4,12 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -55,6 +61,7 @@ import com.bookintok.app.core.database.MessageDao
 import com.bookintok.app.core.network.ExchangeStatus
 import com.bookintok.app.data.Exchange
 import com.bookintok.app.data.ExchangeRepository
+import com.bookintok.app.data.UnreadRepository
 import com.bookintok.app.ui.common.InfoBanner
 import com.bookintok.app.ui.components.BookCover
 import com.bookintok.app.ui.components.EmptyState
@@ -77,6 +84,8 @@ data class ConversationItem(
     val counterpart: String,
     val lastMessage: String?,
     val lastActivity: Instant,
+    /** Messages from the other participant not read yet. */
+    val unread: Int = 0,
 )
 
 /** The tabs of the chat list. */
@@ -109,13 +118,20 @@ data class ExchangeListUiState(
 class ExchangeListViewModel @Inject constructor(
     private val exchanges: ExchangeRepository,
     messages: MessageDao,
-    private val auth: AuthRepository,
+    unread: UnreadRepository,
+    auth: AuthRepository,
 ) : ViewModel() {
     private val refreshing = MutableStateFlow(false)
     private val offline = MutableStateFlow(false)
+    private val uid = auth.currentUidNow().orEmpty()
 
-    val state = combine(exchanges.observeAll(), messages.observeLastMessages(), refreshing, offline) { list, last, refreshing, offline ->
-        val uid = auth.currentUidNow().orEmpty()
+    val state = combine(
+        exchanges.observeAll(),
+        messages.observeLastMessages(),
+        unread.unreadCounts(uid),
+        refreshing,
+        offline,
+    ) { list, last, unreadCounts, refreshing, offline ->
         val lastByExchange = last.associateBy { it.exchangeId }
         ExchangeListUiState(
             items = list.map {
@@ -125,6 +141,7 @@ class ExchangeListViewModel @Inject constructor(
                     counterpart = it.counterpartOf(uid).nickname,
                     lastMessage = lastMessage?.content,
                     lastActivity = maxOf(it.updatedAt, Instant.ofEpochMilli(lastMessage?.sentAt ?: 0)),
+                    unread = unreadCounts[it.id] ?: 0,
                 )
             }.sortedByDescending { it.lastActivity },
             refreshing = refreshing,
@@ -186,14 +203,18 @@ fun ExchangeListScreen(nav: AppNavigator, viewModel: ExchangeListViewModel = hil
                 ) {
                     tabs.forEachIndexed { index, tab ->
                         val count = state.itemsFor(tab).size
+                        val unreadInTab = state.itemsFor(tab).sumOf { it.unread }
                         Tab(
                             selected = pager.currentPage == index,
                             onClick = { scope.launch { pager.animateScrollToPage(index) } },
                             text = {
-                                Text(
-                                    if (count > 0 && tab != ChatTab.ARCHIVED) "${tab.title} ($count)" else tab.title,
-                                    fontWeight = if (pager.currentPage == index) FontWeight.SemiBold else FontWeight.Normal,
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(
+                                        if (count > 0 && tab != ChatTab.ARCHIVED) "${tab.title} ($count)" else tab.title,
+                                        fontWeight = if (pager.currentPage == index) FontWeight.SemiBold else FontWeight.Normal,
+                                    )
+                                    if (unreadInTab > 0) UnreadDot()
+                                }
                             },
                             selectedContentColor = BookintokColors.Ink,
                             unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -258,6 +279,29 @@ private fun SwipeToArchive(archived: Boolean, onSwiped: () -> Unit, modifier: Mo
     ) { content() }
 }
 
+/** Small dot on a tab that holds unread chats. */
+@Composable
+private fun UnreadDot() {
+    Box(Modifier.size(8.dp).clip(CircleShape).background(BookintokColors.Pink))
+}
+
+/** Number of unread messages of a chat, like most messaging apps. */
+@Composable
+private fun UnreadCountBadge(count: Int) {
+    Box(
+        Modifier.defaultMinSize(minWidth = 22.dp, minHeight = 22.dp).clip(CircleShape).background(BookintokColors.Green)
+            .border(1.dp, BookintokColors.GreenDeep, CircleShape).padding(horizontal = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            if (count > 99) "99+" else count.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = BookintokColors.Ink,
+        )
+    }
+}
+
 private val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
 private val dateFormat = DateTimeFormatter.ofPattern("dd/MM")
 
@@ -276,24 +320,36 @@ private fun ConversationRow(item: ConversationItem, onClick: () -> Unit) {
         ) {
             BookCover(item.exchange.bookTitle, item.exchange.bookImageUrl, Modifier.width(48.dp).aspectRatio(3f / 4f))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                val hasUnread = item.unread > 0
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "@${item.counterpart}",
                         style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (hasUnread) FontWeight.Bold else null,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    Text(item.lastActivity.shortLabel(), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        item.lastActivity.shortLabel(),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (hasUnread) FontWeight.Bold else null,
+                        color = if (hasUnread) BookintokColors.GreenDeep else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 Text(item.exchange.bookTitle, style = MaterialTheme.typography.labelMedium, color = BookintokColors.GreenDeep, maxLines = 1)
-                Text(
-                    item.lastMessage ?: "Todavía no hay mensajes",
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        item.lastMessage ?: "Todavía no hay mensajes",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = if (hasUnread) FontWeight.SemiBold else null,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (hasUnread) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (hasUnread) UnreadCountBadge(item.unread)
+                }
             }
         }
         HorizontalDivider(Modifier.padding(start = 78.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))

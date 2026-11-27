@@ -58,9 +58,20 @@ class ChatRulesTest {
     }
 
     @Test
-    fun `cancelled chats stay writable, completed ones are read-only`() {
-        assertTrue(ChatUiState(myUid = "me", exchange = exchange(ExchangeStatus.CANCELLED)).canWrite)
+    fun `only pending chats are writable`() {
+        assertTrue(ChatUiState(myUid = "me", exchange = exchange(ExchangeStatus.PENDING)).canWrite)
+        assertFalse(ChatUiState(myUid = "me", exchange = exchange(ExchangeStatus.CANCELLED)).canWrite)
         assertFalse(ChatUiState(myUid = "me", exchange = exchange(ExchangeStatus.COMPLETED)).canWrite)
+    }
+
+    @Test
+    fun `a request to resume is told apart by who asked`() {
+        val cancelled = exchange(ExchangeStatus.CANCELLED)
+        val mine = ChatUiState(myUid = "me", exchange = cancelled.copy(reopenRequestedBy = "me"))
+        val theirs = ChatUiState(myUid = "me", exchange = cancelled.copy(reopenRequestedBy = "owner"))
+        assertTrue(mine.reopenAskedByMe && !mine.reopenAskedByOther)
+        assertTrue(theirs.reopenAskedByOther && !theirs.reopenAskedByMe)
+        assertFalse(ChatUiState(myUid = "me", exchange = cancelled).reopenAskedByOther)
     }
 
     @Test

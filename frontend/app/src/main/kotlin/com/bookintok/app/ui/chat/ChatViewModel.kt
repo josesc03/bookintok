@@ -16,7 +16,13 @@ import com.bookintok.app.data.UserRepository
 import com.bookintok.app.ui.common.toUserMessage
 import com.bookintok.app.ui.navigation.ChatRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.bookintok.app.data.UnreadRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -38,8 +44,13 @@ data class ChatUiState(
     val canLoadOlder: Boolean = true,
     val rated: Boolean = false,
 ) {
-    /** Completed exchanges are read-only; cancelled ones stay open so people can still talk. */
-    val canWrite get() = exchange != null && exchange.status != ExchangeStatus.COMPLETED
+    /** Only pending exchanges accept messages: completed and cancelled chats are read-only. */
+    val canWrite get() = exchange?.status == ExchangeStatus.PENDING
+
+    /** A cancelled exchange can be resumed when both agree: one asks, the other accepts. */
+    val reopenAskedByMe get() = exchange?.status == ExchangeStatus.CANCELLED && exchange.reopenRequestedBy == myUid
+    val reopenAskedByOther get() =
+        exchange?.status == ExchangeStatus.CANCELLED && exchange.reopenRequestedBy != null && exchange.reopenRequestedBy != myUid
     val canSend get() = canWrite && connection == ChatConnection.Connected && draft.isNotBlank()
     val iConfirmed get() = exchange?.participant(myUid)?.confirmed == true
     val canRate get() = exchange?.status == ExchangeStatus.COMPLETED && !rated
@@ -63,10 +74,21 @@ class ChatViewModel @Inject constructor(
     private val chat: ChatRepository,
     private val exchanges: ExchangeRepository,
     private val users: UserRepository,
+    private val unread: UnreadRepository,
     auth: AuthRepository,
 ) : ViewModel() {
-    private val exchangeId = savedStateHandle.toRoute<ChatRoute>().exchangeId
-    private val local = MutableStateFlow(ChatUiState(myUid = auth.currentUidNow().orEmpty()))
+    private val route = savedStateHandle.toRoute<ChatRoute>()
+    private val exchangeId = route.exchangeId
+    private val local = MutableStateFlow(
+        ChatUiState(
+            myUid = auth.currentUidNow().orEmpty(),
+            notice = if (route.existing) "Ya tienes un chat sobre este libro: te hemos traído a él." else null,
+        ),
+    )
+
+    /** The owner learns about a new chat through their inbox; announced once, on the first connection. */
+    private var announceCreation = route.created
+    private var connection: Job? = null
 
     val state: StateFlow<ChatUiState> = combine(local, exchanges.observe(exchangeId), chat.messages(exchangeId)) { local, exchange, messages ->
         local.copy(exchange = exchange, messages = messages)
@@ -82,8 +104,23 @@ class ChatViewModel @Inject constructor(
                 if (e is CancellationException) throw e
             }
         }
+        connect()
         viewModelScope.launch {
+            // Access is checked when the socket opens: after resuming an exchange, reconnect to write again
+            exchanges.observe(exchangeId).map { it?.status }.filterNotNull().distinctUntilChanged().drop(1).collect { status ->
+                if (status == ExchangeStatus.PENDING) connect()
+            }
+        }
+    }
+
+    private fun connect() {
+        connection?.cancel()
+        connection = viewModelScope.launch {
             chat.connect(exchangeId).collect { connection ->
+                if (connection == ChatConnection.Connected && announceCreation) {
+                    announceCreation = false
+                    chat.notifyExchangeChanged(exchangeId)
+                }
                 if (connection == ChatConnection.ExchangeChanged) {
                     // The other participant confirmed or cancelled: reload it from the API
                     launch { runCatching { exchanges.refresh(exchangeId) } }
@@ -98,6 +135,30 @@ class ChatViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /** Called while the chat is on screen: what it shows counts as read. */
+    fun markRead() {
+        val newest = state.value.messages.lastOrNull() ?: return
+        viewModelScope.launch { unread.markRead(exchangeId, newest.sentAt) }
+    }
+
+    fun requestReopen() = launchCatching {
+        exchanges.requestReopen(exchangeId)
+        chat.notifyExchangeChanged(exchangeId)
+        local.update { it.copy(notice = "Le hemos pedido a @${state.value.counterpart?.nickname.orEmpty()} retomar el intercambio") }
+    }
+
+    fun acceptReopen() = launchCatching {
+        exchanges.acceptReopen(exchangeId)
+        chat.notifyExchangeChanged(exchangeId)
+        local.update { it.copy(notice = "Intercambio retomado: ya podéis volver a escribir") }
+    }
+
+    /** Rejects the other participant's request, or withdraws one's own. */
+    fun clearReopen() = launchCatching {
+        exchanges.clearReopenRequest(exchangeId)
+        chat.notifyExchangeChanged(exchangeId)
     }
 
     fun onDraft(value: String) = local.update { it.copy(draft = value) }

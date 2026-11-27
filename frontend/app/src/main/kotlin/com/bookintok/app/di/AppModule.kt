@@ -13,8 +13,10 @@ import com.bookintok.app.data.ChatRepository
 import com.bookintok.app.data.DefaultBookRepository
 import com.bookintok.app.data.DefaultChatRepository
 import com.bookintok.app.data.DefaultExchangeRepository
+import com.bookintok.app.data.DefaultUnreadRepository
 import com.bookintok.app.data.DefaultUserRepository
 import com.bookintok.app.data.ExchangeRepository
+import com.bookintok.app.data.UnreadRepository
 import com.bookintok.app.data.UserRepository
 import dagger.Binds
 import dagger.Module
@@ -64,7 +66,7 @@ object AppModule {
     @Singleton
     fun database(@ApplicationContext context: Context): BookintokDatabase =
         Room.databaseBuilder(context, BookintokDatabase::class.java, "bookintok.db")
-            .addMigrations(BookintokDatabase.MIGRATION_1_2)
+            .addMigrations(BookintokDatabase.MIGRATION_1_2, BookintokDatabase.MIGRATION_2_3)
             .build()
 
     @Provides
@@ -72,6 +74,9 @@ object AppModule {
 
     @Provides
     fun messageDao(database: BookintokDatabase) = database.messageDao()
+
+    @Provides
+    fun readMarkerDao(database: BookintokDatabase) = database.readMarkerDao()
 }
 
 @Module
@@ -91,6 +96,9 @@ abstract class BindingsModule {
 
     @Binds
     abstract fun exchangeRepository(impl: DefaultExchangeRepository): ExchangeRepository
+
+    @Binds
+    abstract fun unreadRepository(impl: DefaultUnreadRepository): UnreadRepository
 
     @Binds
     abstract fun chatRepository(impl: DefaultChatRepository): ChatRepository

@@ -18,7 +18,16 @@ interface ExchangeRepository {
 
     suspend fun refresh(id: Long)
 
-    suspend fun request(bookId: Long): Exchange
+    /** Opens a chat for the book, or returns the one the user already had (open or cancelled). */
+    suspend fun request(bookId: Long): RequestedExchange
+
+    /** Asks the other participant to resume a cancelled exchange. */
+    suspend fun requestReopen(id: Long): Exchange
+
+    suspend fun acceptReopen(id: Long): Exchange
+
+    /** Rejects the other participant's request, or withdraws one's own. */
+    suspend fun clearReopenRequest(id: Long): Exchange
 
     suspend fun confirm(id: Long): Exchange
 
@@ -27,6 +36,8 @@ interface ExchangeRepository {
     /** Archives or restores the chat for the signed-in user only. */
     suspend fun setArchived(id: Long, archived: Boolean): Exchange
 }
+
+data class RequestedExchange(val exchange: Exchange, val created: Boolean)
 
 @Singleton
 class DefaultExchangeRepository @Inject constructor(
@@ -46,7 +57,16 @@ class DefaultExchangeRepository @Inject constructor(
         dao.upsert(listOf(api.exchange(id).toEntity()))
     }
 
-    override suspend fun request(bookId: Long) = store(api.requestExchange(bookId).toEntity())
+    override suspend fun request(bookId: Long): RequestedExchange {
+        val result = api.requestExchange(bookId)
+        return RequestedExchange(store(result.exchange.toEntity()), result.created)
+    }
+
+    override suspend fun requestReopen(id: Long) = store(api.requestReopen(id).toEntity())
+
+    override suspend fun acceptReopen(id: Long) = store(api.acceptReopen(id).toEntity())
+
+    override suspend fun clearReopenRequest(id: Long) = store(api.clearReopenRequest(id).toEntity())
 
     override suspend fun confirm(id: Long) = store(api.confirmExchange(id).toEntity())
 

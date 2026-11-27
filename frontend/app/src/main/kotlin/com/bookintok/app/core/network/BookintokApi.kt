@@ -117,8 +117,21 @@ class BookintokApi @Inject constructor(
 
     // Exchanges
 
-    suspend fun requestExchange(bookId: Long): ExchangeDto =
-        send(HttpMethod.Post, "/api/v1/books/$bookId/exchanges").body()
+    /** 201 creates a chat; 200 returns the one the user already has for this book. */
+    suspend fun requestExchange(bookId: Long): ExchangeRequestDto {
+        val response = send(HttpMethod.Post, "/api/v1/books/$bookId/exchanges")
+        return ExchangeRequestDto(response.body(), created = response.status == HttpStatusCode.Created)
+    }
+
+    suspend fun requestReopen(id: Long): ExchangeDto =
+        send(HttpMethod.Post, "/api/v1/exchanges/$id/reopen-request").body()
+
+    /** Rejects (the other participant) or withdraws (who asked) the request to resume. */
+    suspend fun clearReopenRequest(id: Long): ExchangeDto =
+        send(HttpMethod.Delete, "/api/v1/exchanges/$id/reopen-request").body()
+
+    suspend fun acceptReopen(id: Long): ExchangeDto =
+        send(HttpMethod.Post, "/api/v1/exchanges/$id/reopen-acceptance").body()
 
     suspend fun myExchanges(): PageDto<ExchangeDto> =
         send(HttpMethod.Get, "/api/v1/exchanges") { parameter("size", 100) }.body()

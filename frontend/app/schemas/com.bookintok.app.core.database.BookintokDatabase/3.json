@@ -1,0 +1,185 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "b00f8414774431c3c6e2e49e292cc7ef",
+    "entities": [
+      {
+        "tableName": "exchanges",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `status` TEXT NOT NULL, `bookId` INTEGER NOT NULL, `bookTitle` TEXT NOT NULL, `bookImageUrl` TEXT, `ownerUid` TEXT NOT NULL, `ownerNickname` TEXT NOT NULL, `ownerConfirmed` INTEGER NOT NULL, `requesterUid` TEXT NOT NULL, `requesterNickname` TEXT NOT NULL, `requesterConfirmed` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `archived` INTEGER NOT NULL, `reopenRequestedBy` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bookId",
+            "columnName": "bookId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bookTitle",
+            "columnName": "bookTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bookImageUrl",
+            "columnName": "bookImageUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ownerUid",
+            "columnName": "ownerUid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ownerNickname",
+            "columnName": "ownerNickname",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ownerConfirmed",
+            "columnName": "ownerConfirmed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "requesterUid",
+            "columnName": "requesterUid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "requesterNickname",
+            "columnName": "requesterNickname",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "requesterConfirmed",
+            "columnName": "requesterConfirmed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archived",
+            "columnName": "archived",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reopenRequestedBy",
+            "columnName": "reopenRequestedBy",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "messages",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `exchangeId` INTEGER NOT NULL, `senderUid` TEXT NOT NULL, `content` TEXT NOT NULL, `sentAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exchangeId",
+            "columnName": "exchangeId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "senderUid",
+            "columnName": "senderUid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "content",
+            "columnName": "content",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sentAt",
+            "columnName": "sentAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_messages_exchangeId_sentAt",
+            "unique": false,
+            "columnNames": [
+              "exchangeId",
+              "sentAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_messages_exchangeId_sentAt` ON `${TABLE_NAME}` (`exchangeId`, `sentAt`)"
+          }
+        ]
+      },
+      {
+        "tableName": "read_markers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`exchangeId` INTEGER NOT NULL, `lastReadAt` INTEGER NOT NULL, PRIMARY KEY(`exchangeId`))",
+        "fields": [
+          {
+            "fieldPath": "exchangeId",
+            "columnName": "exchangeId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastReadAt",
+            "columnName": "lastReadAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "exchangeId"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b00f8414774431c3c6e2e49e292cc7ef')"
+    ]
+  }
+}

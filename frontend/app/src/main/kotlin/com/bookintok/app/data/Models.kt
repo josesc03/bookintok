@@ -19,6 +19,8 @@ data class Exchange(
     val requester: Participant,
     val updatedAt: Instant,
     val archived: Boolean = false,
+    /** Uid of the participant asking to resume this cancelled exchange. */
+    val reopenRequestedBy: String? = null,
 ) {
     val isOpen get() = status == ExchangeStatus.PENDING
 
@@ -49,6 +51,7 @@ fun ExchangeDto.toEntity() = ExchangeEntity(
     requesterConfirmed = requester.confirmed,
     updatedAt = Instant.parse(updatedAt).toEpochMilli(),
     archived = archived,
+    reopenRequestedBy = reopenRequestedBy,
 )
 
 fun ExchangeEntity.toModel() = Exchange(
@@ -61,6 +64,7 @@ fun ExchangeEntity.toModel() = Exchange(
     requester = Participant(requesterUid, requesterNickname, requesterConfirmed),
     updatedAt = Instant.ofEpochMilli(updatedAt),
     archived = archived,
+    reopenRequestedBy = reopenRequestedBy,
 )
 
 fun MessageDto.toEntity() = MessageEntity(id, exchangeId, senderUid, content, Instant.parse(sentAt).toEpochMilli())

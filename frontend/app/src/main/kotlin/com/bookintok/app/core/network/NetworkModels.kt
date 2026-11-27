@@ -116,7 +116,12 @@ data class ExchangeDto(
     val updatedAt: String,
     /** Whether the signed-in user archived this chat. */
     val archived: Boolean = false,
+    /** Uid of the participant asking to resume this cancelled exchange, if any. */
+    val reopenRequestedBy: String? = null,
 )
+
+/** Asking for a book opens a new chat or returns the one the user already had for it. */
+data class ExchangeRequestDto(val exchange: ExchangeDto, val created: Boolean)
 
 @Serializable
 data class RateUserRequest(val score: Int, val comment: String? = null)
@@ -170,5 +175,5 @@ sealed interface ServerEvent {
 
     @Serializable
     @SerialName("message_deleted")
-    data class MessageDeleted(val messageId: String) : ServerEvent
+    data class MessageDeleted(val messageId: String, val exchangeId: Long = 0) : ServerEvent
 }

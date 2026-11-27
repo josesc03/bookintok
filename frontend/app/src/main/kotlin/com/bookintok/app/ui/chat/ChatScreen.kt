@@ -82,6 +82,7 @@ import com.bookintok.app.data.ChatMessage
 import com.bookintok.app.ui.common.InfoBanner
 import com.bookintok.app.ui.components.Avatar
 import com.bookintok.app.ui.components.GhostButton
+import com.bookintok.app.ui.components.OutlineButton
 import com.bookintok.app.ui.components.PrimaryButton
 import com.bookintok.app.ui.components.SecondaryButton
 import com.bookintok.app.ui.components.bookintokFieldColors
@@ -105,6 +106,9 @@ fun ChatScreen(nav: AppNavigator, viewModel: ChatViewModel = hiltViewModel()) {
     val listState = rememberLazyListState()
     val exchange = state.exchange
     val counterpart = state.counterpart
+
+    // What is on screen counts as read (this runs only while the chat is displayed)
+    LaunchedEffect(state.messages.lastOrNull()?.id) { viewModel.markRead() }
 
     // Keep the newest message in view as messages arrive
     LaunchedEffect(state.messages.size) {
@@ -149,7 +153,14 @@ fun ChatScreen(nav: AppNavigator, viewModel: ChatViewModel = hiltViewModel()) {
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-                StatusStrip(state, onConfirm = viewModel::confirm, onRate = { showRating = true })
+                StatusStrip(
+                    state,
+                    onConfirm = viewModel::confirm,
+                    onRate = { showRating = true },
+                    onRequestReopen = viewModel::requestReopen,
+                    onAcceptReopen = viewModel::acceptReopen,
+                    onClearReopen = viewModel::clearReopen,
+                )
                 AnimatedVisibility(state.connection == ChatConnection.Disconnected, enter = expandVertically(), exit = shrinkVertically()) {
                     InfoBanner("Sin conexión: mostrando los mensajes guardados. Reconectando…")
                 }
@@ -181,7 +192,7 @@ fun ChatScreen(nav: AppNavigator, viewModel: ChatViewModel = hiltViewModel()) {
                 item(key = "hello") {
                     Text(
                         when {
-                            exchange?.status == ExchangeStatus.CANCELLED -> "El intercambio se canceló, pero podéis seguir hablando por aquí."
+                            exchange?.status == ExchangeStatus.CANCELLED -> "El intercambio se canceló. Si queréis seguir, pedid retomarlo."
                             state.canWrite -> "Escribe a @${counterpart?.nickname.orEmpty()} para quedar y hacer el intercambio."
                             else -> "No hay mensajes."
                         },
@@ -236,7 +247,7 @@ fun ChatScreen(nav: AppNavigator, viewModel: ChatViewModel = hiltViewModel()) {
         AlertDialog(
             onDismissRequest = { confirmCancel = false },
             title = { Text("¿Cancelar el intercambio?") },
-            text = { Text("El libro seguirá disponible para otras personas. Podréis seguir hablando por este chat.") },
+            text = { Text("El libro seguirá disponible para otras personas y el chat quedará en solo lectura. Más adelante podréis retomarlo si los dos estáis de acuerdo.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmCancel = false
@@ -296,14 +307,34 @@ private fun ChatMenu(state: ChatUiState, onProfile: () -> Unit, onBook: () -> Un
 
 /** What the exchange needs next, right under the top bar; it animates when the status changes. */
 @Composable
-private fun StatusStrip(state: ChatUiState, onConfirm: () -> Unit, onRate: () -> Unit) {
+private fun StatusStrip(
+    state: ChatUiState,
+    onConfirm: () -> Unit,
+    onRate: () -> Unit,
+    onRequestReopen: () -> Unit,
+    onAcceptReopen: () -> Unit,
+    onClearReopen: () -> Unit,
+) {
     val exchange = state.exchange ?: return
     val nickname = state.counterpart?.nickname.orEmpty()
     AnimatedContent(
-        targetState = Triple(exchange.status, state.iConfirmed, state.canRate),
+        targetState = StripState(exchange.status, state.iConfirmed, state.canRate, state.reopenAskedByMe, state.reopenAskedByOther),
         transitionSpec = { (fadeIn() + expandVertically()) togetherWith (fadeOut() + shrinkVertically()) },
         label = "status",
-    ) { (status, iConfirmed, canRate) ->
+    ) { (status, iConfirmed, canRate, askedByMe, askedByOther) ->
+        if (askedByOther) {
+            // The other participant wants to resume: this needs an answer, so it gets two buttons
+            Surface(color = MaterialTheme.colorScheme.secondaryContainer) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("@$nickname quiere retomar el intercambio.", style = MaterialTheme.typography.bodyMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PrimaryButton("Aceptar", onAcceptReopen)
+                        OutlineButton("Rechazar", onClearReopen)
+                    }
+                }
+            }
+            return@AnimatedContent
+        }
         Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
@@ -314,12 +345,15 @@ private fun StatusStrip(state: ChatUiState, onConfirm: () -> Unit, onRate: () ->
                     ExchangeStatus.PENDING ->
                         if (iConfirmed) "Has confirmado. Falta que @$nickname confirme." else "¿Ya os habéis dado el libro? Confirmadlo los dos."
                     ExchangeStatus.COMPLETED -> "Intercambio completado"
-                    ExchangeStatus.CANCELLED -> "Intercambio cancelado. Podéis seguir hablando."
+                    ExchangeStatus.CANCELLED ->
+                        if (askedByMe) "Has pedido retomar el intercambio. Esperando a @$nickname." else "Intercambio cancelado."
                 }
                 Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                 when {
                     status == ExchangeStatus.PENDING && !iConfirmed -> PrimaryButton("Confirmar", onConfirm)
                     status == ExchangeStatus.COMPLETED && canRate -> SecondaryButton("Valorar", onRate, icon = Icons.Default.Star)
+                    status == ExchangeStatus.CANCELLED && askedByMe -> GhostButton("Retirar", onClearReopen)
+                    status == ExchangeStatus.CANCELLED -> SecondaryButton("Pedir retomar", onRequestReopen)
                 }
             }
         }
@@ -402,6 +436,14 @@ private fun MessageActions(message: ChatMessage, canDelete: Boolean, onDelete: (
     }
 }
 
+private data class StripState(
+    val status: ExchangeStatus,
+    val iConfirmed: Boolean,
+    val canRate: Boolean,
+    val reopenAskedByMe: Boolean,
+    val reopenAskedByOther: Boolean,
+)
+
 @Composable
 private fun InputBar(state: ChatUiState, onDraft: (String) -> Unit, onSend: () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.background) {
@@ -434,7 +476,11 @@ private fun InputBar(state: ChatUiState, onDraft: (String) -> Unit, onSend: () -
                 }
             } else {
                 Text(
-                    "El intercambio se completó: este chat ya es de solo lectura.",
+                    if (state.exchange?.status == ExchangeStatus.CANCELLED) {
+                        "Intercambio cancelado: el chat es de solo lectura hasta que lo retoméis."
+                    } else {
+                        "El intercambio se completó: este chat ya es de solo lectura."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

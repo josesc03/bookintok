@@ -95,6 +95,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Chat to open after asking for the book; [created] is false when it already existed. */
+data class OpenChat(val exchangeId: Long, val created: Boolean)
+
 data class BookDetailUiState(
     val book: BookDto? = null,
     val isMine: Boolean = false,
@@ -102,7 +105,7 @@ data class BookDetailUiState(
     val working: Boolean = false,
     val error: String? = null,
     /** Set when an exchange was created (or already existed): the screen opens its chat. */
-    val openChat: Long? = null,
+    val openChat: OpenChat? = null,
     val deleted: Boolean = false,
 )
 
@@ -134,18 +137,10 @@ class BookDetailViewModel @Inject constructor(
         }
     }
 
-    /** Opens a new exchange, or the one the user already has open for this book. */
+    /** Opens a new chat, or the one the user already has for this book (one chat per book). */
     fun requestExchange() = launchCatching {
-        val exchangeId = try {
-            exchanges.request(bookId).id
-        } catch (e: ApiException) {
-            if (e.status != 409) throw e
-            exchanges.refreshAll()
-            exchanges.observeAll().first()
-                .firstOrNull { it.bookId == bookId && it.status == ExchangeStatus.PENDING && it.requester.uid == auth.currentUidNow() }
-                ?.id ?: throw e
-        }
-        _state.update { it.copy(openChat = exchangeId) }
+        val result = exchanges.request(bookId)
+        _state.update { it.copy(openChat = OpenChat(result.exchange.id, result.created)) }
     }
 
     fun delete() = launchCatching {
@@ -178,7 +173,7 @@ fun BookDetailScreen(nav: AppNavigator, viewModel: BookDetailViewModel = hiltVie
     LaunchedEffect(state.openChat) {
         state.openChat?.let {
             viewModel.chatOpened()
-            nav.openChat(it)
+            nav.openRequestedChat(it.exchangeId, it.created)
         }
     }
     LaunchedEffect(state.deleted) { if (state.deleted) nav.back() }
