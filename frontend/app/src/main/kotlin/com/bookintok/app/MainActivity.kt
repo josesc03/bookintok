@@ -21,7 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bookintok.app.ui.auth.LoginScreen
 import com.bookintok.app.ui.auth.ProfileSetupScreen
 import com.bookintok.app.ui.auth.VerifyEmailScreen
-import com.bookintok.app.ui.common.LoadingBox
+import com.bookintok.app.ui.components.LogoLoading
 import com.bookintok.app.ui.location.LocationScreen
 import com.bookintok.app.ui.navigation.BookintokNavHost
 import com.bookintok.app.ui.session.SessionState
@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
                     AnimatedContent(screen, contentKey = { it::class }, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "session") { current ->
                         when (current) {
                             WELCOME -> WelcomeScreen(onEnter = { welcomed = true })
-                            SessionState.Loading -> LoadingBox()
+                            SessionState.Loading -> LogoLoading()
                             SessionState.SignedOut -> LoginScreen()
                             is SessionState.NeedsEmailVerification -> VerifyEmailScreen(email = current.email, onVerified = session::refresh)
                             SessionState.NeedsProfile -> ProfileSetupScreen(onCreated = session::refresh)
