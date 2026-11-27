@@ -163,7 +163,16 @@ fun SettingsScreen(nav: AppNavigator, viewModel: SettingsViewModel = hiltViewMod
 
             Section("Acerca de")
             Row(Icons.Default.Info, "Versión", BuildConfig.VERSION_NAME)
-            Row(Icons.Default.Mail, "Contacto", LegalTexts.email)
+            Row(
+                Icons.Default.Mail,
+                "Contacto",
+                LegalTexts.email,
+                onClick = {
+                    val mail = Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:${LegalTexts.email}"))
+                        .putExtra(Intent.EXTRA_SUBJECT, "Bookintok")
+                    runCatching { context.startActivity(mail) } // no mail app: nothing to open
+                },
+            )
 
             Section("Zona peligrosa")
             Row(
