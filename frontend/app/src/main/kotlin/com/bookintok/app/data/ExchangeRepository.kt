@@ -23,6 +23,9 @@ interface ExchangeRepository {
     suspend fun confirm(id: Long): Exchange
 
     suspend fun cancel(id: Long): Exchange
+
+    /** Archives or restores the chat for the signed-in user only. */
+    suspend fun setArchived(id: Long, archived: Boolean): Exchange
 }
 
 @Singleton
@@ -48,6 +51,8 @@ class DefaultExchangeRepository @Inject constructor(
     override suspend fun confirm(id: Long) = store(api.confirmExchange(id).toEntity())
 
     override suspend fun cancel(id: Long) = store(api.cancelExchange(id).toEntity())
+
+    override suspend fun setArchived(id: Long, archived: Boolean) = store(api.setArchived(id, archived).toEntity())
 
     private suspend fun store(entity: com.bookintok.app.core.database.ExchangeEntity): Exchange {
         dao.upsert(listOf(entity))

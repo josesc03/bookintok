@@ -27,6 +27,7 @@ data class PublicProfileDto(
     val nickname: String,
     val displayName: String? = null,
     val imageUrl: String? = null,
+    val locationLabel: String? = null,
     val rating: RatingSummaryDto = RatingSummaryDto(),
 )
 
@@ -113,6 +114,8 @@ data class ExchangeDto(
     val requester: ExchangeParticipantDto,
     val createdAt: String,
     val updatedAt: String,
+    /** Whether the signed-in user archived this chat. */
+    val archived: Boolean = false,
 )
 
 @Serializable
@@ -148,7 +151,7 @@ data class MessageDto(
 )
 
 @Serializable
-data class OutgoingMessage(val content: String? = null, val type: String? = null)
+data class OutgoingMessage(val content: String? = null, val type: String? = null, val messageId: String? = null)
 
 @Serializable
 sealed interface ServerEvent {
@@ -164,4 +167,8 @@ sealed interface ServerEvent {
     @Serializable
     @SerialName("exchange_changed")
     data class ExchangeChanged(val exchangeId: Long) : ServerEvent
+
+    @Serializable
+    @SerialName("message_deleted")
+    data class MessageDeleted(val messageId: String) : ServerEvent
 }

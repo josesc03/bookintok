@@ -63,7 +63,9 @@ object AppModule {
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): BookintokDatabase =
-        Room.databaseBuilder(context, BookintokDatabase::class.java, "bookintok.db").build()
+        Room.databaseBuilder(context, BookintokDatabase::class.java, "bookintok.db")
+            .addMigrations(BookintokDatabase.MIGRATION_1_2)
+            .build()
 
     @Provides
     fun exchangeDao(database: BookintokDatabase) = database.exchangeDao()

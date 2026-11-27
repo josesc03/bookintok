@@ -18,6 +18,7 @@ data class Exchange(
     val owner: Participant,
     val requester: Participant,
     val updatedAt: Instant,
+    val archived: Boolean = false,
 ) {
     val isOpen get() = status == ExchangeStatus.PENDING
 
@@ -47,6 +48,7 @@ fun ExchangeDto.toEntity() = ExchangeEntity(
     requesterNickname = requester.nickname,
     requesterConfirmed = requester.confirmed,
     updatedAt = Instant.parse(updatedAt).toEpochMilli(),
+    archived = archived,
 )
 
 fun ExchangeEntity.toModel() = Exchange(
@@ -58,6 +60,7 @@ fun ExchangeEntity.toModel() = Exchange(
     owner = Participant(ownerUid, ownerNickname, ownerConfirmed),
     requester = Participant(requesterUid, requesterNickname, requesterConfirmed),
     updatedAt = Instant.ofEpochMilli(updatedAt),
+    archived = archived,
 )
 
 fun MessageDto.toEntity() = MessageEntity(id, exchangeId, senderUid, content, Instant.parse(sentAt).toEpochMilli())

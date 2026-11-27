@@ -64,6 +64,9 @@ interface ChatRepository {
 
     suspend fun send(exchangeId: Long, content: String)
 
+    /** Takes back one of the user's own messages (the server allows it during 30 minutes). */
+    suspend fun deleteMessage(exchangeId: Long, messageId: String)
+
     /** Tells the other participant that the exchange changed (best effort: ignored when offline). */
     suspend fun notifyExchangeChanged(exchangeId: Long)
 }
@@ -99,8 +102,13 @@ class DefaultChatRepository @Inject constructor(
             parameter("before", before?.toString())
         }
         if (!response.status.isSuccess()) throw response.toApiException()
-        val page = response.body<List<MessageDto>>()
-        dao.upsert(page.map { it.toEntity() })
+        val page = response.body<List<MessageDto>>().map { it.toEntity() }
+        if (before == null) {
+            // The newest page is authoritative: drop cached messages deleted while we were away
+            val from = page.minOfOrNull { it.sentAt } ?: 0L
+            dao.deleteMissing(exchangeId, from, page.map { it.id }.ifEmpty { listOf("") })
+        }
+        dao.upsert(page)
         return page.size
     }
 
@@ -124,6 +132,7 @@ class DefaultChatRepository @Inject constructor(
                             is ServerEvent.NewMessage -> dao.upsert(listOf(event.message.toEntity()))
                             is ServerEvent.Error -> this@channelFlow.send(ChatConnection.Rejected(event.reason))
                             is ServerEvent.ExchangeChanged -> this@channelFlow.send(ChatConnection.ExchangeChanged)
+                            is ServerEvent.MessageDeleted -> dao.delete(event.messageId)
                         }
                     }
                     sender.cancel()
@@ -144,6 +153,11 @@ class DefaultChatRepository @Inject constructor(
     override suspend fun send(exchangeId: Long, content: String) {
         val queue = outgoing[exchangeId] ?: throw NotConnectedException()
         queue.send(OutgoingMessage(content = content))
+    }
+
+    override suspend fun deleteMessage(exchangeId: Long, messageId: String) {
+        val queue = outgoing[exchangeId] ?: throw NotConnectedException()
+        queue.send(OutgoingMessage(type = "delete_message", messageId = messageId))
     }
 
     override suspend fun notifyExchangeChanged(exchangeId: Long) {

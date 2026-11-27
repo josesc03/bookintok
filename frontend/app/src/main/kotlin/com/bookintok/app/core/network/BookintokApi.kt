@@ -26,12 +26,20 @@ class ApiException(val status: Int, val detail: String?) : Exception("HTTP $stat
     val isNotFound get() = status == HttpStatusCode.NotFound.value
 }
 
+/** Search criteria. Sets accept several values at once (any of them matches). */
 data class BookSearch(
     val query: String? = null,
-    val language: String? = null,
+    val languages: Set<String> = emptySet(),
     val category: String? = null,
+    val conditions: Set<BookCondition> = emptySet(),
+    val coverTypes: Set<CoverType> = emptySet(),
     val maxDistanceKm: Int? = null,
-)
+) {
+    /** Filters in use besides the text and the distance (which always has a value), for the filter button. */
+    val activeFilters: Int
+        get() = listOf(languages.isNotEmpty(), category != null, conditions.isNotEmpty(), coverTypes.isNotEmpty())
+            .count { it }
+}
 
 /** Typed client for the Spring Boot API. Every request carries the user's Firebase ID token. */
 class BookintokApi @Inject constructor(
@@ -62,8 +70,10 @@ class BookintokApi @Inject constructor(
     suspend fun searchBooks(search: BookSearch, page: Int): PageDto<BookDto> =
         send(HttpMethod.Get, "/api/v1/books") {
             parameter("q", search.query?.takeIf { it.isNotBlank() })
-            parameter("language", search.language)
+            search.languages.forEach { parameter("language", it) }
             parameter("category", search.category)
+            search.conditions.forEach { parameter("condition", it.name) }
+            search.coverTypes.forEach { parameter("coverType", it.name) }
             parameter("maxDistanceKm", search.maxDistanceKm)
             parameter("page", page)
         }.body()
@@ -120,6 +130,9 @@ class BookintokApi @Inject constructor(
 
     suspend fun cancelExchange(id: Long): ExchangeDto =
         send(HttpMethod.Post, "/api/v1/exchanges/$id/cancellation").body()
+
+    suspend fun setArchived(id: Long, archived: Boolean): ExchangeDto =
+        send(if (archived) HttpMethod.Put else HttpMethod.Delete, "/api/v1/exchanges/$id/archive").body()
 
     private suspend fun send(
         method: HttpMethod,
