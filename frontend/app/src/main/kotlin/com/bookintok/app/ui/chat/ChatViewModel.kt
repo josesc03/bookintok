@@ -129,7 +129,6 @@ class ChatViewModel @Inject constructor(
                 local.update {
                     when (connection) {
                         is ChatConnection.Rejected -> it.copy(notice = connection.reason)
-                        ChatConnection.Connected -> it.copy(connection = connection, notice = null)
                         else -> it.copy(connection = connection)
                     }
                 }

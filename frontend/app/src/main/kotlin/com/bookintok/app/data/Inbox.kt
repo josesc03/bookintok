@@ -85,8 +85,9 @@ class InboxManager @Inject constructor(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Offline or server restart: try again later
+                android.util.Log.w("Inbox", "Inbox connection failed", e)
             }
             delay(DefaultChatRepository.backoff(attempt++))
         }

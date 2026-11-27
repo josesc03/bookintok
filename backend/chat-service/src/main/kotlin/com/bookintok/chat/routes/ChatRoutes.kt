@@ -71,6 +71,7 @@ fun Route.chatRoutes(deps: ChatDependencies) {
         webSocket("/ws/inbox") {
             val uid = call.uid
             deps.inboxes.join(uid, this)
+            log.info("User {} opened the inbox", uid)
             try {
                 for (frame in incoming) Unit // nothing to receive: this socket only pushes
             } finally {
@@ -163,6 +164,7 @@ private suspend fun ChatDependencies.publish(exchangeId: Long, participants: Set
     val text = ChatJson.encodeToString<ServerEvent>(event)
     rooms.broadcast(exchangeId, text)
     inboxes.send(participants, text)
+    log.debug("Event for exchange {} sent to the inboxes of {}", exchangeId, participants)
 }
 
 private fun ApplicationCall.instant(value: String, name: String): Instant = try {
