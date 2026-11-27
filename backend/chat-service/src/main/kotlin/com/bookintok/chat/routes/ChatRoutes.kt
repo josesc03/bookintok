@@ -87,6 +87,17 @@ fun Route.chatRoutes(deps: ChatDependencies) {
             call.respond(HttpStatusCode.NoContent)
         }
 
+        /**
+         * First step of deleting an account (the API deletes the rest afterwards): the messages of
+         * every exchange of the user, for both participants, and the user's devices.
+         */
+        delete("/api/v1/me") {
+            val exchangeIds = deps.exchangeAccess.exchangeIdsOf(call.bearerToken)
+            deps.messages.deleteConversations(exchangeIds)
+            deps.devices.removeAllOf(call.uid)
+            call.respond(HttpStatusCode.NoContent)
+        }
+
         /** Events of every exchange of the user (new messages, deletions, status changes), while the app is open. */
         webSocket("/ws/inbox") {
             val uid = call.uid

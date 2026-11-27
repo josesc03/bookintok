@@ -29,6 +29,8 @@ interface DeviceRepository {
     suspend fun tokensOf(uid: String): List<String>
 
     suspend fun remove(tokens: Collection<String>)
+
+    suspend fun removeAllOf(uid: String)
 }
 
 class MongoDeviceRepository(database: MongoDatabase) : DeviceRepository {
@@ -55,6 +57,10 @@ class MongoDeviceRepository(database: MongoDatabase) : DeviceRepository {
 
     override suspend fun remove(tokens: Collection<String>) {
         if (tokens.isNotEmpty()) collection.deleteMany(Filters.`in`("_id", tokens))
+    }
+
+    override suspend fun removeAllOf(uid: String) {
+        collection.deleteMany(Filters.eq("uid", uid))
     }
 }
 

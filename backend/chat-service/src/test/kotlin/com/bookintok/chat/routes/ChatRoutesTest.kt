@@ -245,6 +245,21 @@ class ChatRoutesTest {
     }
 
     @Test
+    fun `deleting the account removes the user's conversations and devices`() = chatTest {
+        messages.save(openExchange, "owner", "hola", Instant.now())
+        messages.save(closedExchange, "reader", "adios", Instant.now())
+        messages.save(99, "someone", "not theirs", Instant.now())
+        devices.register("reader", "phone")
+
+        val response = client.delete("/api/v1/me") { bearerAuth(TestTokens.forUser("reader")) }
+
+        assertEquals(HttpStatusCode.NoContent, response.status)
+        assertEquals(0, messages.history(openExchange, null, 10).size + messages.history(closedExchange, null, 10).size)
+        assertEquals(1, messages.history(99, null, 10).size)
+        assertEquals(emptyList(), devices.tokensOf("reader"))
+    }
+
+    @Test
     fun `empty messages are rejected`() = chatTest {
         wsClient().webSocket("/ws/exchanges/$openExchange", request = { bearerAuth(TestTokens.forUser("owner")) }) {
             send(Frame.Text("""{"content": "   "}"""))

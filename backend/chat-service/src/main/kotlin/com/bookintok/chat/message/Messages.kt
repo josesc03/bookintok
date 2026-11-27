@@ -24,6 +24,9 @@ interface MessageRepository {
     suspend fun since(exchangeIds: Collection<Long>, after: Instant, limit: Int): List<ChatMessage>
 
     suspend fun delete(id: String)
+
+    /** Removes whole conversations (when an account is deleted, its exchanges go too). */
+    suspend fun deleteConversations(exchangeIds: Collection<Long>)
 }
 
 const val MAX_MESSAGE_LENGTH = 2000

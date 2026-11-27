@@ -67,6 +67,10 @@ class MongoMessageRepository(database: MongoDatabase) : MessageRepository {
         if (ObjectId.isValid(id)) collection.deleteOne(Filters.eq("_id", ObjectId(id)))
     }
 
+    override suspend fun deleteConversations(exchangeIds: Collection<Long>) {
+        if (exchangeIds.isNotEmpty()) collection.deleteMany(Filters.`in`("exchangeId", exchangeIds))
+    }
+
     private fun Document.toMessage() = ChatMessage(
         id = getObjectId("_id").toHexString(),
         exchangeId = getLong("exchangeId"),

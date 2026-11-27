@@ -62,6 +62,7 @@ private object NoDevices : DeviceRepository {
     override suspend fun unregister(uid: String, token: String) = Unit
     override suspend fun tokensOf(uid: String) = emptyList<String>()
     override suspend fun remove(tokens: Collection<String>) = Unit
+    override suspend fun removeAllOf(uid: String) = Unit
 }
 
 val ChatJson = Json {

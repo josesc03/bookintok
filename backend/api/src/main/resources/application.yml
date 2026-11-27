@@ -36,3 +36,6 @@ springdoc:
 bookintok:
   images:
     dir: ${IMAGES_DIR:./data/images}
+  firebase:
+    # Optional service account key, only used to delete sign-in accounts
+    credentials-file: ${FIREBASE_CREDENTIALS_FILE:}

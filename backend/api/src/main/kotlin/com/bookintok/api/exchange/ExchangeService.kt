@@ -6,6 +6,7 @@ import com.bookintok.api.common.BusinessRuleException
 import com.bookintok.api.common.ConflictException
 import com.bookintok.api.common.NotFoundException
 import com.bookintok.api.common.PageResponse
+import com.bookintok.api.safety.SafetyService
 import com.bookintok.api.user.UserService
 import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Pageable
@@ -21,6 +22,7 @@ class ExchangeService(
     private val exchanges: ExchangeRepository,
     private val bookService: BookService,
     private val userService: UserService,
+    private val safety: SafetyService,
     private val clock: Clock,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -33,6 +35,7 @@ class ExchangeService(
     fun request(bookId: Long, requesterUid: String): ExchangeRequestResult {
         val book = bookService.getBook(bookId)
         if (book.isOwnedBy(requesterUid)) throw BusinessRuleException("You cannot request your own book")
+        safety.requireNotBlocked(requesterUid, book.owner.uid)
         exchanges.findFirstByBookIdAndRequesterUidAndStatusInOrderByCreatedAtDesc(
             bookId, requesterUid, listOf(ExchangeStatus.PENDING, ExchangeStatus.CANCELLED),
         )?.let { return ExchangeRequestResult(it.toResponse(requesterUid), created = false) }
@@ -112,6 +115,7 @@ class ExchangeService(
     }
 
     private fun requireReopenable(exchange: Exchange) {
+        safety.requireNotBlocked(exchange.owner.uid, exchange.requester.uid)
         if (exchange.book.status != BookStatus.AVAILABLE) throw ConflictException("The book is no longer available")
         val bookId = requireNotNull(exchange.book.id)
         if (exchanges.existsByBookIdAndRequesterUidAndStatus(bookId, exchange.requester.uid, ExchangeStatus.PENDING)) {

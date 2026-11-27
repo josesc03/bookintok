@@ -20,6 +20,10 @@ class InMemoryDevices : DeviceRepository {
     override suspend fun remove(tokens: Collection<String>) {
         tokens.forEach { this.tokens.remove(it) }
     }
+
+    override suspend fun removeAllOf(uid: String) {
+        tokens.values.removeIf { it == uid }
+    }
 }
 
 class NotifierTest {

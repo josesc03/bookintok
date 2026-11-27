@@ -32,6 +32,16 @@ interface ExchangeRepository : JpaRepository<Exchange, Long> {
         statuses: Collection<ExchangeStatus>,
     ): Exchange?
 
+    /** Open exchanges between two users, in either direction. */
+    @Query(
+        """
+        select e from Exchange e
+        where e.status = com.bookintok.api.exchange.ExchangeStatus.PENDING
+          and ((e.owner.uid = :a and e.requester.uid = :b) or (e.owner.uid = :b and e.requester.uid = :a))
+        """,
+    )
+    fun findPendingBetween(@Param("a") a: String, @Param("b") b: String): List<Exchange>
+
     fun findByBookIdAndStatus(bookId: Long, status: ExchangeStatus): List<Exchange>
 
     /** Whether the two users completed at least one exchange together, in either direction. */

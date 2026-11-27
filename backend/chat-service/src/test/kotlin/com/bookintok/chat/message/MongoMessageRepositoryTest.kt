@@ -52,6 +52,18 @@ class MongoMessageRepositoryTest {
     }
 
     @Test
+    fun `whole conversations can be deleted`() = runTest {
+        val repository = newRepository()
+        repository.save(1, "owner", "a", Instant.parse("2026-05-01T10:00:00Z"))
+        repository.save(2, "owner", "b", Instant.parse("2026-05-01T10:00:00Z"))
+
+        repository.deleteConversations(listOf(1L))
+
+        assertEquals(emptyList(), repository.history(1, null, 10))
+        assertEquals(1, repository.history(2, null, 10).size)
+    }
+
+    @Test
     fun `history is newest first, per exchange, and pages with before`() = runTest {
         val repository = newRepository()
         val base = Instant.parse("2026-05-01T10:00:00Z")

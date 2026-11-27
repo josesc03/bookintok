@@ -19,6 +19,10 @@ object BookSpecifications {
         cb.notEqual(root.get<User>("owner").get<String>("uid"), uid)
     }
 
+    fun notOwnedByAny(uids: Collection<String>) = Specification<Book> { root, _, cb ->
+        cb.not(root.get<User>("owner").get<String>("uid").`in`(uids))
+    }
+
     fun matchesText(text: String) = Specification<Book> { root, _, cb ->
         val pattern = "%${escapeLike(text.lowercase())}%"
         cb.or(

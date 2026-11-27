@@ -8,6 +8,7 @@ import com.bookintok.api.common.PageResponse
 import com.bookintok.api.user.UserService
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.domain.Specification
+import com.bookintok.api.safety.SafetyService
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -19,6 +20,7 @@ import java.time.Instant
 class BookService(
     private val books: BookRepository,
     private val userService: UserService,
+    private val safety: SafetyService,
     private val clock: Clock,
 ) {
 
@@ -30,6 +32,8 @@ class BookService(
         val specs = buildList {
             add(BookSpecifications.isAvailable())
             add(BookSpecifications.notOwnedBy(viewerUid))
+            // Blocking works both ways: neither user sees the other's books
+            safety.hiddenFrom(viewerUid).takeIf { it.isNotEmpty() }?.let { add(BookSpecifications.notOwnedByAny(it)) }
             filter.q?.takeIf { it.isNotBlank() }?.let { add(BookSpecifications.matchesText(it.trim())) }
             filter.language?.takeIf { it.isNotEmpty() }?.let { add(BookSpecifications.hasLanguage(it)) }
             filter.category?.takeIf { it.isNotBlank() }?.let { add(BookSpecifications.hasCategory(it.trim())) }

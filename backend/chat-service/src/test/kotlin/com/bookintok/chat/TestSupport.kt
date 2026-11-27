@@ -57,4 +57,8 @@ class InMemoryMessageRepository : MessageRepository {
     override suspend fun delete(id: String) {
         messages.removeIf { it.id == id }
     }
+
+    override suspend fun deleteConversations(exchangeIds: Collection<Long>) {
+        messages.removeIf { it.exchangeId in exchangeIds }
+    }
 }
