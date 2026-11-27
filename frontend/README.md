@@ -47,7 +47,12 @@ flowchart LR
 
 ## Running it
 
-1. Start the backend from the repository root: `docker compose up --build`.
+**With Docker only:** `docker compose up -d --build` from the repository root also builds the APK into
+`dist/bookintok.apk` (see the [root README](../README.md#running-it)).
+
+**From Android Studio:**
+
+1. Start the backend from the repository root: `docker compose up -d --build`.
 2. Create `frontend/local.properties` (it is git-ignored):
 
    ```properties
@@ -55,6 +60,8 @@ flowchart LR
    firebase.projectId=your-project-id
    firebase.appId=1:1234567890:android:abc123
    firebase.apiKey=your-web-api-key
+   firebase.senderId=1234567890
+   firebase.webClientId=1234567890-abc.apps.googleusercontent.com
    # Optional, defaults target the emulator (10.0.2.2 is the host machine):
    # bookintok.apiBaseUrl=http://10.0.2.2:8080
    # bookintok.chatBaseUrl=ws://10.0.2.2:8081
