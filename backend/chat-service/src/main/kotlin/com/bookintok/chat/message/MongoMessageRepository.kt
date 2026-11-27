@@ -4,6 +4,7 @@ import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Indexes
 import com.mongodb.client.model.Sorts
 import com.mongodb.kotlin.client.coroutine.MongoDatabase
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import org.bson.Document
@@ -46,6 +47,15 @@ class MongoMessageRepository(database: MongoDatabase) : MessageRepository {
             .limit(limit)
             .map { it.toMessage() }
             .toList()
+    }
+
+    override suspend fun find(id: String): ChatMessage? {
+        if (!ObjectId.isValid(id)) return null
+        return collection.find(Filters.eq("_id", ObjectId(id))).firstOrNull()?.toMessage()
+    }
+
+    override suspend fun delete(id: String) {
+        if (ObjectId.isValid(id)) collection.deleteOne(Filters.eq("_id", ObjectId(id)))
     }
 
     private fun Document.toMessage() = ChatMessage(

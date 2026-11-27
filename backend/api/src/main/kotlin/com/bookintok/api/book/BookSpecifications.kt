@@ -27,8 +27,9 @@ object BookSpecifications {
         )
     }
 
-    fun hasLanguage(language: String) = Specification<Book> { root, _, cb ->
-        cb.equal(cb.lower(root.get("language")), language.lowercase())
+    /** Any of the given languages (case-insensitive). */
+    fun hasLanguage(languages: Collection<String>) = Specification<Book> { root, _, cb ->
+        cb.lower(root.get("language")).`in`(languages.map { it.lowercase() })
     }
 
     fun hasCategory(category: String) = Specification<Book> { root, _, cb ->
@@ -39,12 +40,12 @@ object BookSpecifications {
         )
     }
 
-    fun hasCoverType(coverType: CoverType) = Specification<Book> { root, _, cb ->
-        cb.equal(root.get<CoverType>("coverType"), coverType)
+    fun hasCoverType(coverTypes: Collection<CoverType>) = Specification<Book> { root, _, _ ->
+        root.get<CoverType>("coverType").`in`(coverTypes)
     }
 
-    fun hasCondition(condition: BookCondition) = Specification<Book> { root, _, cb ->
-        cb.equal(root.get<BookCondition>("condition"), condition)
+    fun hasCondition(conditions: Collection<BookCondition>) = Specification<Book> { root, _, _ ->
+        root.get<BookCondition>("condition").`in`(conditions)
     }
 
     /**

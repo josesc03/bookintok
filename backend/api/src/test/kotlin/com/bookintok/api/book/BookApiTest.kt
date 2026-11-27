@@ -34,6 +34,23 @@ class BookApiTest : IntegrationTest() {
     }
 
     @Test
+    fun `filters accept several values at once`() {
+        register("alice")
+        register("bob")
+        createBook("bob", title = "A", language = "Español", condition = "NEW", coverType = "HARDCOVER")
+        createBook("bob", title = "B", language = "Inglés", condition = "USED", coverType = "PAPERBACK")
+        createBook("bob", title = "C", language = "Francés", condition = "WORN", coverType = "PAPERBACK")
+
+        getAs("alice", "/api/v1/books?language=español&language=Inglés").andExpect { jsonPath("$.totalElements") { value(2) } }
+        getAs("alice", "/api/v1/books?condition=NEW&condition=WORN").andExpect { jsonPath("$.totalElements") { value(2) } }
+        getAs("alice", "/api/v1/books?coverType=PAPERBACK&condition=USED")
+            .andExpect {
+                jsonPath("$.totalElements") { value(1) }
+                jsonPath("$.content[0].title") { value("B") }
+            }
+    }
+
+    @Test
     fun `like wildcards in the search text are treated literally`() {
         register("alice")
         register("bob")

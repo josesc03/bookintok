@@ -6,6 +6,7 @@ import com.bookintok.chat.auth.FIREBASE_AUTH
 import com.bookintok.chat.auth.bearerToken
 import com.bookintok.chat.auth.uid
 import com.bookintok.chat.exchange.AccessResult
+import com.bookintok.chat.message.DELETE_WINDOW
 import com.bookintok.chat.message.MAX_MESSAGE_LENGTH
 import com.bookintok.chat.message.OutgoingMessageRequest
 import com.bookintok.chat.message.ServerEvent
@@ -97,9 +98,12 @@ private suspend fun DefaultWebSocketServerSession.handleIncoming(
     } catch (_: IllegalArgumentException) {
         return sendEvent(ServerEvent.Error("Invalid message format"))
     }
-    if (request.isExchangeChanged) {
-        deps.rooms.broadcast(exchangeId, ChatJson.encodeToString<ServerEvent>(ServerEvent.ExchangeChanged(exchangeId)))
-        return
+    when (request.type) {
+        OutgoingMessageRequest.EXCHANGE_CHANGED -> {
+            deps.rooms.broadcast(exchangeId, ChatJson.encodeToString<ServerEvent>(ServerEvent.ExchangeChanged(exchangeId)))
+            return
+        }
+        OutgoingMessageRequest.DELETE_MESSAGE -> return deleteMessage(deps, exchangeId, uid, request.messageId)
     }
     val content = request.content?.trim().orEmpty()
     when {
@@ -109,6 +113,26 @@ private suspend fun DefaultWebSocketServerSession.handleIncoming(
         else -> {
             val saved = deps.messages.save(exchangeId, uid, content, Instant.now().truncatedTo(ChronoUnit.MILLIS))
             deps.rooms.broadcast(exchangeId, ChatJson.encodeToString<ServerEvent>(ServerEvent.NewMessage(saved.toDto())))
+        }
+    }
+}
+
+/** Only the sender can delete a message, within [DELETE_WINDOW] of sending it. */
+private suspend fun DefaultWebSocketServerSession.deleteMessage(
+    deps: ChatDependencies,
+    exchangeId: Long,
+    uid: String,
+    messageId: String?,
+) {
+    val message = messageId?.let { deps.messages.find(it) }
+    when {
+        message == null || message.exchangeId != exchangeId -> sendEvent(ServerEvent.Error("Message not found"))
+        message.senderUid != uid -> sendEvent(ServerEvent.Error("You can only delete your own messages"))
+        message.sentAt.isBefore(Instant.now().minus(DELETE_WINDOW)) ->
+            sendEvent(ServerEvent.Error("Messages can only be deleted during the first 30 minutes"))
+        else -> {
+            deps.messages.delete(message.id)
+            deps.rooms.broadcast(exchangeId, ChatJson.encodeToString<ServerEvent>(ServerEvent.MessageDeleted(message.id)))
         }
     }
 }

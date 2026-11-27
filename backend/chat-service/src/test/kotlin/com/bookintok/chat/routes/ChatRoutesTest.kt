@@ -165,6 +165,34 @@ class ChatRoutesTest {
     }
 
     @Test
+    fun `senders can delete their recent messages and both sides are told`() = chatTest {
+        val mine = messages.save(openExchange, "reader", "oops", Instant.now())
+        val client = wsClient()
+        client.webSocket("/ws/exchanges/$openExchange", request = { bearerAuth(TestTokens.forUser("owner")) }) {
+            val ownerSession = this
+            client.webSocket("/ws/exchanges/$openExchange", request = { bearerAuth(TestTokens.forUser("reader")) }) {
+                awaitConnections(openExchange, 2)
+                send(Frame.Text("""{"type": "delete_message", "messageId": "${mine.id}"}"""))
+                assertEquals(mine.id, assertIs<ServerEvent.MessageDeleted>(receiveEvent(ownerSession.incoming)).messageId)
+            }
+        }
+        assertEquals(null, messages.find(mine.id))
+    }
+
+    @Test
+    fun `messages of others or older than 30 minutes cannot be deleted`() = chatTest {
+        val theirs = messages.save(openExchange, "owner", "hi", Instant.now())
+        val old = messages.save(openExchange, "reader", "old", Instant.now().minusSeconds(31 * 60))
+        wsClient().webSocket("/ws/exchanges/$openExchange", request = { bearerAuth(TestTokens.forUser("reader")) }) {
+            send(Frame.Text("""{"type": "delete_message", "messageId": "${theirs.id}"}"""))
+            assertIs<ServerEvent.Error>(receiveEvent(incoming))
+            send(Frame.Text("""{"type": "delete_message", "messageId": "${old.id}"}"""))
+            assertIs<ServerEvent.Error>(receiveEvent(incoming))
+        }
+        assertEquals(2, messages.history(openExchange, null, 10).size)
+    }
+
+    @Test
     fun `empty messages are rejected`() = chatTest {
         wsClient().webSocket("/ws/exchanges/$openExchange", request = { bearerAuth(TestTokens.forUser("owner")) }) {
             send(Frame.Text("""{"content": "   "}"""))

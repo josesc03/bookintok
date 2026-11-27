@@ -41,4 +41,10 @@ class InMemoryMessageRepository : MessageRepository {
         .filter { it.exchangeId == exchangeId && (before == null || it.sentAt < before) }
         .sortedByDescending { it.sentAt }
         .take(limit)
+
+    override suspend fun find(id: String) = messages.firstOrNull { it.id == id }
+
+    override suspend fun delete(id: String) {
+        messages.removeIf { it.id == id }
+    }
 }

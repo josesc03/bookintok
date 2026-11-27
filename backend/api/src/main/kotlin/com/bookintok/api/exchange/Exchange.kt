@@ -51,6 +51,11 @@ class Exchange(
 
     var requesterConfirmed: Boolean = false,
 
+    /** Archiving is personal: it hides the chat for that participant only. */
+    var ownerArchived: Boolean = false,
+
+    var requesterArchived: Boolean = false,
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
@@ -60,6 +65,13 @@ class Exchange(
     var version: Long = 0
 
     fun isParticipant(uid: String) = owner.uid == uid || requester.uid == uid
+
+    fun isArchivedFor(uid: String) = if (owner.uid == uid) ownerArchived else requesterArchived
+
+    fun setArchived(uid: String, archived: Boolean) {
+        requireParticipant(uid)
+        if (owner.uid == uid) ownerArchived = archived else requesterArchived = archived
+    }
 
     /** Records [uid]'s confirmation. Returns true when this confirmation completes the exchange. */
     fun confirm(uid: String, now: Instant): Boolean {

@@ -63,6 +63,17 @@ class ExchangeApiTest : IntegrationTest() {
     }
 
     @Test
+    fun `archiving hides the chat only for the user who archives it`() {
+        val exchangeId = requestExchange(bookId, "reader")
+
+        putAs("reader", "/api/v1/exchanges/$exchangeId/archive").andExpect { jsonPath("$.archived") { value(true) } }
+        getAs("owner", "/api/v1/exchanges/$exchangeId").andExpect { jsonPath("$.archived") { value(false) } }
+        putAs("other", "/api/v1/exchanges/$exchangeId/archive").andExpect { status { isForbidden() } }
+
+        deleteAs("reader", "/api/v1/exchanges/$exchangeId/archive").andExpect { jsonPath("$.archived") { value(false) } }
+    }
+
+    @Test
     fun `lists the user's exchanges filtered by status`() {
         val exchangeId = requestExchange(bookId, "reader")
         requestExchange(createBook("other", title = "Other book"), "reader")

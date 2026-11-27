@@ -31,10 +31,10 @@ class BookService(
             add(BookSpecifications.isAvailable())
             add(BookSpecifications.notOwnedBy(viewerUid))
             filter.q?.takeIf { it.isNotBlank() }?.let { add(BookSpecifications.matchesText(it.trim())) }
-            filter.language?.let { add(BookSpecifications.hasLanguage(it)) }
-            filter.category?.let { add(BookSpecifications.hasCategory(it)) }
-            filter.coverType?.let { add(BookSpecifications.hasCoverType(it)) }
-            filter.condition?.let { add(BookSpecifications.hasCondition(it)) }
+            filter.language?.takeIf { it.isNotEmpty() }?.let { add(BookSpecifications.hasLanguage(it)) }
+            filter.category?.takeIf { it.isNotBlank() }?.let { add(BookSpecifications.hasCategory(it.trim())) }
+            filter.coverType?.takeIf { it.isNotEmpty() }?.let { add(BookSpecifications.hasCoverType(it)) }
+            filter.condition?.takeIf { it.isNotEmpty() }?.let { add(BookSpecifications.hasCondition(it)) }
             filter.maxDistanceKm?.let { radius ->
                 val location = viewerLocation
                     ?: throw BusinessRuleException("Set your location before searching by distance")

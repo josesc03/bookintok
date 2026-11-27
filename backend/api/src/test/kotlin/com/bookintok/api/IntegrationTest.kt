@@ -80,11 +80,17 @@ abstract class IntegrationTest {
         }
     }
 
-    fun createBook(ownerUid: String, title: String = "Dune", language: String = "en"): Long {
+    fun createBook(
+        ownerUid: String,
+        title: String = "Dune",
+        language: String = "en",
+        condition: String = "USED",
+        coverType: String = "PAPERBACK",
+    ): Long {
         val body = """
             {
               "title": "$title", "author": "Frank Herbert", "mainCategory": "Sci-fi",
-              "language": "$language", "coverType": "PAPERBACK", "condition": "USED"
+              "language": "$language", "coverType": "$coverType", "condition": "$condition"
             }
         """.trimIndent()
         val response = postAs(ownerUid, "/api/v1/books", body)

@@ -17,9 +17,16 @@ interface MessageRepository {
 
     /** Messages of an exchange, newest first, optionally only those sent before [before]. */
     suspend fun history(exchangeId: Long, before: Instant?, limit: Int): List<ChatMessage>
+
+    suspend fun find(id: String): ChatMessage?
+
+    suspend fun delete(id: String)
 }
 
 const val MAX_MESSAGE_LENGTH = 2000
+
+/** Senders can take a message back only for a while, like most messaging apps. */
+val DELETE_WINDOW: java.time.Duration = java.time.Duration.ofMinutes(30)
 
 // JSON sent and received by clients
 
@@ -36,15 +43,16 @@ data class MessageDto(
 fun ChatMessage.toDto() = MessageDto(id, exchangeId, senderUid, content, sentAt.toString())
 
 /**
- * What a client sends through the WebSocket: a chat message (`{"content": "..."}`) or
- * `{"type": "exchange_changed"}` after confirming or cancelling the exchange through the API.
+ * What a client sends through the WebSocket:
+ * - a chat message: `{"content": "..."}`
+ * - `{"type": "exchange_changed"}` after confirming or cancelling the exchange through the API
+ * - `{"type": "delete_message", "messageId": "..."}` to take back one of their own recent messages
  */
 @Serializable
-data class OutgoingMessageRequest(val content: String? = null, val type: String? = null) {
-    val isExchangeChanged get() = type == EXCHANGE_CHANGED
-
+data class OutgoingMessageRequest(val content: String? = null, val type: String? = null, val messageId: String? = null) {
     companion object {
         const val EXCHANGE_CHANGED = "exchange_changed"
+        const val DELETE_MESSAGE = "delete_message"
     }
 }
 
@@ -66,4 +74,8 @@ sealed interface ServerEvent {
     @Serializable
     @SerialName("exchange_changed")
     data class ExchangeChanged(val exchangeId: Long) : ServerEvent
+
+    @Serializable
+    @SerialName("message_deleted")
+    data class MessageDeleted(val messageId: String) : ServerEvent
 }

@@ -35,10 +35,11 @@ data class BookRequest(
 /** Query parameters of `GET /api/v1/books`. All of them are optional. */
 data class BookSearchFilter(
     val q: String? = null,
-    val language: String? = null,
+    /** Repeat the parameter to accept several: `?language=Español&language=Inglés`. */
+    val language: List<String>? = null,
     val category: String? = null,
-    val coverType: CoverType? = null,
-    val condition: BookCondition? = null,
+    val coverType: List<CoverType>? = null,
+    val condition: List<BookCondition>? = null,
     @field:Positive
     val maxDistanceKm: Double? = null,
 )

@@ -14,9 +14,11 @@ data class ExchangeResponse(
     val requester: ExchangeParticipant,
     val createdAt: Instant,
     val updatedAt: Instant,
+    /** Whether the user asking archived this chat (archiving is personal). */
+    val archived: Boolean,
 )
 
-fun Exchange.toResponse() = ExchangeResponse(
+fun Exchange.toResponse(viewerUid: String) = ExchangeResponse(
     id = requireNotNull(id),
     status = status,
     book = ExchangeBook(requireNotNull(book.id), book.title, book.imageUrl()),
@@ -24,4 +26,5 @@ fun Exchange.toResponse() = ExchangeResponse(
     requester = ExchangeParticipant(requester.uid, requester.nickname, requester.imageUrl, requesterConfirmed),
     createdAt = createdAt,
     updatedAt = updatedAt,
+    archived = isArchivedFor(viewerUid),
 )

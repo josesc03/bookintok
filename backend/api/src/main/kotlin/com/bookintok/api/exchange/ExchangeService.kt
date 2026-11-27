@@ -43,16 +43,16 @@ class ExchangeService(
             ),
         )
         log.info("Exchange {} requested for book {}", exchange.id, bookId)
-        return exchange.toResponse()
+        return exchange.toResponse(requesterUid)
     }
 
     fun findForUser(uid: String, status: ExchangeStatus?, pageable: Pageable): PageResponse<ExchangeResponse> =
-        PageResponse.of(exchanges.findForUser(uid, status, pageable)) { it.toResponse() }
+        PageResponse.of(exchanges.findForUser(uid, status, pageable)) { it.toResponse(uid) }
 
     fun findById(id: Long, uid: String): ExchangeResponse {
         val exchange = getExchange(id)
         exchange.requireParticipant(uid)
-        return exchange.toResponse()
+        return exchange.toResponse(uid)
     }
 
     /**
@@ -71,14 +71,22 @@ class ExchangeService(
                 .forEach { it.discard(now) }
             log.info("Exchange {} completed", id)
         }
-        return exchange.toResponse()
+        return exchange.toResponse(uid)
     }
 
     @Transactional
     fun cancel(id: Long, uid: String): ExchangeResponse {
         val exchange = getExchange(id)
         exchange.cancel(uid, Instant.now(clock))
-        return exchange.toResponse()
+        return exchange.toResponse(uid)
+    }
+
+    /** Archives (or restores) the chat for [uid] only; the other participant is not affected. */
+    @Transactional
+    fun setArchived(id: Long, uid: String, archived: Boolean): ExchangeResponse {
+        val exchange = getExchange(id)
+        exchange.setArchived(uid, archived)
+        return exchange.toResponse(uid)
     }
 
     private fun getExchange(id: Long): Exchange =
