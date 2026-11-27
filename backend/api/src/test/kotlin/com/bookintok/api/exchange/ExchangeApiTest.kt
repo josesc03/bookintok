@@ -37,20 +37,77 @@ class ExchangeApiTest : IntegrationTest() {
     }
 
     @Test
-    fun `cannot request your own book or the same book twice`() {
+    fun `cannot request your own book and asking again returns the existing chat`() {
         postAs("owner", "/api/v1/books/$bookId/exchanges").andExpect { status { isUnprocessableContent() } }
 
-        requestExchange(bookId, "reader")
-        postAs("reader", "/api/v1/books/$bookId/exchanges").andExpect { status { isConflict() } }
+        val exchangeId = requestExchange(bookId, "reader")
+        postAs("reader", "/api/v1/books/$bookId/exchanges").andExpect {
+            status { isOk() }
+            jsonPath("$.id") { value(exchangeId) }
+        }
     }
 
     @Test
-    fun `a new request is allowed after cancelling the previous one`() {
+    fun `asking again after cancelling returns the cancelled chat instead of a new one`() {
         val exchangeId = requestExchange(bookId, "reader")
-        postAs("reader", "/api/v1/exchanges/$exchangeId/cancellation")
+        postAs("owner", "/api/v1/exchanges/$exchangeId/cancellation")
             .andExpect { jsonPath("$.status") { value("CANCELLED") } }
 
-        requestExchange(bookId, "reader")
+        postAs("reader", "/api/v1/books/$bookId/exchanges").andExpect {
+            status { isOk() }
+            jsonPath("$.id") { value(exchangeId) }
+            jsonPath("$.status") { value("CANCELLED") }
+        }
+        getAs("owner", "/api/v1/exchanges").andExpect { jsonPath("$.totalElements") { value(1) } }
+    }
+
+    @Test
+    fun `a cancelled exchange resumes only when the other participant accepts`() {
+        val exchangeId = requestExchange(bookId, "reader")
+        postAs("owner", "/api/v1/exchanges/$exchangeId/confirmation")
+        postAs("owner", "/api/v1/exchanges/$exchangeId/cancellation")
+
+        postAs("reader", "/api/v1/exchanges/$exchangeId/reopen-request").andExpect {
+            status { isOk() }
+            jsonPath("$.status") { value("CANCELLED") }
+            jsonPath("$.reopenRequestedBy") { value("reader") }
+        }
+        postAs("reader", "/api/v1/exchanges/$exchangeId/reopen-acceptance").andExpect { status { isConflict() } }
+        postAs("other", "/api/v1/exchanges/$exchangeId/reopen-acceptance").andExpect { status { isForbidden() } }
+
+        postAs("owner", "/api/v1/exchanges/$exchangeId/reopen-acceptance").andExpect {
+            status { isOk() }
+            jsonPath("$.status") { value("PENDING") }
+            jsonPath("$.owner.confirmed") { value(false) }
+            jsonPath("$.reopenRequestedBy") { value(null) }
+        }
+    }
+
+    @Test
+    fun `a request to resume can be rejected or withdrawn`() {
+        val exchangeId = requestExchange(bookId, "reader")
+        postAs("reader", "/api/v1/exchanges/$exchangeId/cancellation")
+        postAs("reader", "/api/v1/exchanges/$exchangeId/reopen-request")
+
+        deleteAs("owner", "/api/v1/exchanges/$exchangeId/reopen-request").andExpect {
+            status { isOk() }
+            jsonPath("$.status") { value("CANCELLED") }
+            jsonPath("$.reopenRequestedBy") { value(null) }
+        }
+        deleteAs("owner", "/api/v1/exchanges/$exchangeId/reopen-request").andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `pending exchanges cannot be resumed and exchanged books cannot be resumed either`() {
+        val exchangeId = requestExchange(bookId, "reader")
+        postAs("reader", "/api/v1/exchanges/$exchangeId/reopen-request").andExpect { status { isConflict() } }
+
+        val otherId = requestExchange(bookId, "other")
+        postAs("other", "/api/v1/exchanges/$otherId/cancellation")
+        postAs("owner", "/api/v1/exchanges/$exchangeId/confirmation")
+        postAs("reader", "/api/v1/exchanges/$exchangeId/confirmation")
+
+        postAs("other", "/api/v1/exchanges/$otherId/reopen-request").andExpect { status { isConflict() } }
     }
 
     @Test

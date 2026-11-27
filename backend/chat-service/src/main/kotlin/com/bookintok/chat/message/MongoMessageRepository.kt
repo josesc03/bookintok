@@ -54,6 +54,15 @@ class MongoMessageRepository(database: MongoDatabase) : MessageRepository {
         return collection.find(Filters.eq("_id", ObjectId(id))).firstOrNull()?.toMessage()
     }
 
+    override suspend fun since(exchangeIds: Collection<Long>, after: Instant, limit: Int): List<ChatMessage> {
+        if (exchangeIds.isEmpty()) return emptyList()
+        return collection.find(Filters.and(Filters.`in`("exchangeId", exchangeIds), Filters.gt("sentAt", Date.from(after))))
+            .sort(Sorts.orderBy(Sorts.ascending("sentAt"), Sorts.ascending("_id")))
+            .limit(limit)
+            .map { it.toMessage() }
+            .toList()
+    }
+
     override suspend fun delete(id: String) {
         if (ObjectId.isValid(id)) collection.deleteOne(Filters.eq("_id", ObjectId(id)))
     }

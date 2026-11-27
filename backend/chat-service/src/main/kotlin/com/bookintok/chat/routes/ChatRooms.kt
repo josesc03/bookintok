@@ -38,3 +38,38 @@ class ChatRooms {
 
     fun connectionCount(exchangeId: Long): Int = rooms[exchangeId]?.size ?: 0
 }
+
+/**
+ * Inbox connections, one or more per user (one per open app). They receive the events of all the
+ * user's exchanges, so the app can update its chat list and unread counters without opening each chat.
+ * In memory, like [ChatRooms].
+ */
+class Inboxes {
+    private val log = LoggerFactory.getLogger(javaClass)
+    private val inboxes = ConcurrentHashMap<String, MutableSet<DefaultWebSocketServerSession>>()
+
+    fun join(uid: String, session: DefaultWebSocketServerSession) {
+        inboxes.computeIfAbsent(uid) { ConcurrentHashMap.newKeySet() }.add(session)
+    }
+
+    fun leave(uid: String, session: DefaultWebSocketServerSession) {
+        inboxes.computeIfPresent(uid) { _, sessions ->
+            sessions.remove(session)
+            sessions.ifEmpty { null }
+        }
+    }
+
+    suspend fun send(uids: Collection<String>, text: String) {
+        uids.forEach { uid ->
+            inboxes[uid]?.forEach { session ->
+                try {
+                    session.send(Frame.Text(text))
+                } catch (e: Exception) {
+                    log.debug("Dropping an inbox event for a closed session of {}", uid, e)
+                }
+            }
+        }
+    }
+
+    fun connectionCount(uid: String): Int = inboxes[uid]?.size ?: 0
+}

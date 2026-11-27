@@ -25,6 +25,13 @@ interface ExchangeRepository : JpaRepository<Exchange, Long> {
 
     fun existsByBookIdAndRequesterUidAndStatus(bookId: Long, requesterUid: String, status: ExchangeStatus): Boolean
 
+    /** The latest exchange of [requesterUid] for the book in any of [statuses]. */
+    fun findFirstByBookIdAndRequesterUidAndStatusInOrderByCreatedAtDesc(
+        bookId: Long,
+        requesterUid: String,
+        statuses: Collection<ExchangeStatus>,
+    ): Exchange?
+
     fun findByBookIdAndStatus(bookId: Long, status: ExchangeStatus): List<Exchange>
 
     /** Whether the two users completed at least one exchange together, in either direction. */

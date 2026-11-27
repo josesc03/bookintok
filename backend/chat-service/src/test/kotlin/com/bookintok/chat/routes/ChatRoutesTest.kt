@@ -33,6 +33,7 @@ class ChatRoutesTest {
     private val closedExchange = 2L
     private val messages = InMemoryMessageRepository()
     private val rooms = ChatRooms()
+    private val inboxes = Inboxes()
 
     private fun chatTest(block: suspend ApplicationTestBuilder.() -> Unit) = testApplication {
         application {
@@ -47,6 +48,7 @@ class ChatRoutesTest {
                     ),
                     messages = messages,
                     rooms = rooms,
+                    inboxes = inboxes,
                 ),
             )
         }
@@ -190,6 +192,35 @@ class ChatRoutesTest {
             assertIs<ServerEvent.Error>(receiveEvent(incoming))
         }
         assertEquals(2, messages.history(openExchange, null, 10).size)
+    }
+
+    @Test
+    fun `the other participant's inbox gets new messages without opening the chat`() = chatTest {
+        val client = wsClient()
+        client.webSocket("/ws/inbox", request = { bearerAuth(TestTokens.forUser("owner")) }) {
+            val ownerInbox = this
+            withTimeout(5_000) { while (inboxes.connectionCount("owner") < 1) delay(10) }
+            client.webSocket("/ws/exchanges/$openExchange", request = { bearerAuth(TestTokens.forUser("reader")) }) {
+                send(Frame.Text("""{"content": "hola"}"""))
+                receiveEvent(incoming)
+                send(Frame.Text("""{"type": "exchange_changed"}"""))
+            }
+            val message = assertIs<ServerEvent.NewMessage>(receiveEvent(ownerInbox.incoming)).message
+            assertEquals(openExchange, message.exchangeId)
+            assertIs<ServerEvent.ExchangeChanged>(receiveEvent(ownerInbox.incoming))
+        }
+    }
+
+    @Test
+    fun `inbox sync returns what the user's exchanges received since a date`() = chatTest {
+        val base = Instant.parse("2026-05-01T10:00:00Z")
+        messages.save(openExchange, "owner", "old", base)
+        messages.save(openExchange, "owner", "new", base.plusSeconds(60))
+        messages.save(99, "someone", "not mine", base.plusSeconds(60))
+
+        val response = client.get("/api/v1/inbox?since=${base.plusSeconds(1)}") { bearerAuth(TestTokens.forUser("reader")) }
+        val body = ChatJson.decodeFromString<List<MessageDto>>(response.bodyAsText())
+        assertEquals(listOf("new"), body.map { it.content })
     }
 
     @Test

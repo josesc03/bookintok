@@ -26,7 +26,12 @@ class FakeExchangeAccess(private val exchanges: Map<Long, Pair<Set<String>, Bool
     override suspend fun check(exchangeId: Long, bearerToken: String): AccessResult {
         val uid = JWT.decode(bearerToken).subject
         val (participants, open) = exchanges[exchangeId] ?: return AccessResult.Denied
-        return if (uid in participants) AccessResult.Allowed(open) else AccessResult.Denied
+        return if (uid in participants) AccessResult.Allowed(open, participants) else AccessResult.Denied
+    }
+
+    override suspend fun exchangeIdsOf(bearerToken: String): List<Long> {
+        val uid = JWT.decode(bearerToken).subject
+        return exchanges.filterValues { (participants, _) -> uid in participants }.keys.toList()
     }
 }
 
@@ -43,6 +48,11 @@ class InMemoryMessageRepository : MessageRepository {
         .take(limit)
 
     override suspend fun find(id: String) = messages.firstOrNull { it.id == id }
+
+    override suspend fun since(exchangeIds: Collection<Long>, after: Instant, limit: Int) = messages
+        .filter { it.exchangeId in exchangeIds && it.sentAt > after }
+        .sortedBy { it.sentAt }
+        .take(limit)
 
     override suspend fun delete(id: String) {
         messages.removeIf { it.id == id }

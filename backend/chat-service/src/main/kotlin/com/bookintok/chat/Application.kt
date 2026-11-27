@@ -8,6 +8,7 @@ import com.bookintok.chat.exchange.UpstreamUnavailableException
 import com.bookintok.chat.message.MessageRepository
 import com.bookintok.chat.message.MongoMessageRepository
 import com.bookintok.chat.routes.ChatRooms
+import com.bookintok.chat.routes.Inboxes
 import com.bookintok.chat.routes.chatRoutes
 import com.mongodb.kotlin.client.coroutine.MongoClient
 import io.ktor.client.HttpClient
@@ -38,6 +39,7 @@ class ChatDependencies(
     val exchangeAccess: ExchangeAccess,
     val messages: MessageRepository,
     val rooms: ChatRooms = ChatRooms(),
+    val inboxes: Inboxes = Inboxes(),
 )
 
 val ChatJson = Json {

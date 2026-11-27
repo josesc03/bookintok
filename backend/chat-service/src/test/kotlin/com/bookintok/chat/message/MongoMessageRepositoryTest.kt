@@ -39,6 +39,19 @@ class MongoMessageRepositoryTest {
     }
 
     @Test
+    fun `since returns newer messages of the given exchanges, oldest first`() = runTest {
+        val repository = newRepository()
+        val base = Instant.parse("2026-05-01T10:00:00Z")
+        repository.save(1, "owner", "old", base)
+        repository.save(2, "owner", "b", base.plusSeconds(20))
+        repository.save(1, "owner", "a", base.plusSeconds(10))
+        repository.save(3, "owner", "not asked", base.plusSeconds(30))
+
+        assertEquals(listOf("a", "b"), repository.since(listOf(1L, 2L), base, limit = 10).map { it.content })
+        assertEquals(emptyList(), repository.since(emptyList(), base, limit = 10))
+    }
+
+    @Test
     fun `history is newest first, per exchange, and pages with before`() = runTest {
         val repository = newRepository()
         val base = Instant.parse("2026-05-01T10:00:00Z")

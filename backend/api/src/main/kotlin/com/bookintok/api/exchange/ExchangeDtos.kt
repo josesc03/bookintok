@@ -16,7 +16,12 @@ data class ExchangeResponse(
     val updatedAt: Instant,
     /** Whether the user asking archived this chat (archiving is personal). */
     val archived: Boolean,
+    /** Uid of the participant asking to resume this cancelled exchange, if any. */
+    val reopenRequestedBy: String?,
 )
+
+/** Result of asking for a book: the chat that already existed for it, or a new one. */
+data class ExchangeRequestResult(val exchange: ExchangeResponse, val created: Boolean)
 
 fun Exchange.toResponse(viewerUid: String) = ExchangeResponse(
     id = requireNotNull(id),
@@ -27,4 +32,5 @@ fun Exchange.toResponse(viewerUid: String) = ExchangeResponse(
     createdAt = createdAt,
     updatedAt = updatedAt,
     archived = isArchivedFor(viewerUid),
+    reopenRequestedBy = reopenRequestedBy,
 )

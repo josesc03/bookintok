@@ -56,6 +56,9 @@ class Exchange(
 
     var requesterArchived: Boolean = false,
 
+    /** Uid of the participant who asked to resume this cancelled exchange, waiting for the other one. */
+    var reopenRequestedBy: String? = null,
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
@@ -93,7 +96,46 @@ class Exchange(
         requireParticipant(uid)
         requirePending()
         status = ExchangeStatus.CANCELLED
+        reopenRequestedBy = null
         updatedAt = now
+    }
+
+    /** Asks to resume a cancelled exchange. If the other participant had already asked, it resumes right away. */
+    fun requestReopen(uid: String, now: Instant) {
+        requireParticipant(uid)
+        requireCancelled()
+        val requestedBy = reopenRequestedBy
+        if (requestedBy != null && requestedBy != uid) reopen(now) else reopenRequestedBy = uid
+        updatedAt = now
+    }
+
+    /** The participant who did not ask accepts: the exchange goes back to pending and confirmations start over. */
+    fun acceptReopen(uid: String, now: Instant) {
+        requireParticipant(uid)
+        requireCancelled()
+        val requestedBy = reopenRequestedBy ?: throw ConflictException("Nobody asked to resume this exchange")
+        if (requestedBy == uid) throw ConflictException("The other participant has to accept your request")
+        reopen(now)
+    }
+
+    /** Rejects the request (the other participant) or withdraws it (who asked). */
+    fun clearReopenRequest(uid: String, now: Instant) {
+        requireParticipant(uid)
+        if (reopenRequestedBy == null) throw ConflictException("Nobody asked to resume this exchange")
+        reopenRequestedBy = null
+        updatedAt = now
+    }
+
+    private fun reopen(now: Instant) {
+        status = ExchangeStatus.PENDING
+        ownerConfirmed = false
+        requesterConfirmed = false
+        reopenRequestedBy = null
+        updatedAt = now
+    }
+
+    private fun requireCancelled() {
+        if (status != ExchangeStatus.CANCELLED) throw ConflictException("Only cancelled exchanges can be resumed")
     }
 
     /** Used when the book went to another user. */

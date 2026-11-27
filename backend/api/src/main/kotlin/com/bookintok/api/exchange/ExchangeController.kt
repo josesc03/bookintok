@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -13,16 +14,17 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
 class ExchangeController(private val exchangeService: ExchangeService) {
 
+    /** 201 with a new chat, or 200 with the chat the user already has for this book. */
     @PostMapping("/api/v1/books/{bookId}/exchanges")
-    @ResponseStatus(HttpStatus.CREATED)
-    fun request(@AuthenticationPrincipal jwt: Jwt, @PathVariable bookId: Long) =
-        exchangeService.request(bookId, jwt.uid)
+    fun request(@AuthenticationPrincipal jwt: Jwt, @PathVariable bookId: Long): ResponseEntity<ExchangeResponse> {
+        val result = exchangeService.request(bookId, jwt.uid)
+        return ResponseEntity.status(if (result.created) HttpStatus.CREATED else HttpStatus.OK).body(result.exchange)
+    }
 
     /** Exchanges where the authenticated user is the owner or the requester. */
     @GetMapping("/api/v1/exchanges")
@@ -42,6 +44,18 @@ class ExchangeController(private val exchangeService: ExchangeService) {
 
     @PostMapping("/api/v1/exchanges/{id}/cancellation")
     fun cancel(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: Long) = exchangeService.cancel(id, jwt.uid)
+
+    /** Asks to resume a cancelled exchange; the other participant has to accept it. */
+    @PostMapping("/api/v1/exchanges/{id}/reopen-request")
+    fun requestReopen(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: Long) = exchangeService.requestReopen(id, jwt.uid)
+
+    /** Rejects (the other participant) or withdraws (who asked) the request to resume. */
+    @DeleteMapping("/api/v1/exchanges/{id}/reopen-request")
+    fun clearReopenRequest(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: Long) =
+        exchangeService.clearReopenRequest(id, jwt.uid)
+
+    @PostMapping("/api/v1/exchanges/{id}/reopen-acceptance")
+    fun acceptReopen(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: Long) = exchangeService.acceptReopen(id, jwt.uid)
 
     /** Hides the chat from the user's list (only for them). */
     @PutMapping("/api/v1/exchanges/{id}/archive")

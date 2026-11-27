@@ -20,6 +20,9 @@ interface MessageRepository {
 
     suspend fun find(id: String): ChatMessage?
 
+    /** Messages of any of [exchangeIds] sent after [after], oldest first: what an inbox missed. */
+    suspend fun since(exchangeIds: Collection<Long>, after: Instant, limit: Int): List<ChatMessage>
+
     suspend fun delete(id: String)
 }
 
@@ -77,5 +80,5 @@ sealed interface ServerEvent {
 
     @Serializable
     @SerialName("message_deleted")
-    data class MessageDeleted(val messageId: String) : ServerEvent
+    data class MessageDeleted(val messageId: String, val exchangeId: Long) : ServerEvent
 }

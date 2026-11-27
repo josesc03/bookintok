@@ -27,16 +27,25 @@ class ApiExchangeAccessTest {
 
     @Test
     fun `participant of a pending exchange can write`() = runTest {
-        val access = accessWith(HttpStatusCode.OK, """{"id": 7, "status": "PENDING", "book": {"id": 1}}""")
-        assertEquals(AccessResult.Allowed(open = true), access.check(7, "token-123"))
+        val access = accessWith(
+            HttpStatusCode.OK,
+            """{"id": 7, "status": "PENDING", "book": {"id": 1}, "owner": {"uid": "ana"}, "requester": {"uid": "luis"}}""",
+        )
+        assertEquals(AccessResult.Allowed(open = true, participants = setOf("ana", "luis")), access.check(7, "token-123"))
         assertEquals("Bearer token-123", lastAuthorization)
     }
 
     @Test
-    fun `cancelled exchanges stay writable, completed ones are read-only`() = runTest {
-        assertEquals(AccessResult.Allowed(open = true), accessWith(HttpStatusCode.OK, """{"id": 7, "status": "CANCELLED"}""").check(7, "token"))
+    fun `cancelled and completed exchanges are read-only`() = runTest {
+        assertEquals(AccessResult.Allowed(open = false), accessWith(HttpStatusCode.OK, """{"id": 7, "status": "CANCELLED"}""").check(7, "token"))
         val access = accessWith(HttpStatusCode.OK, """{"id": 7, "status": "COMPLETED"}""")
         assertEquals(AccessResult.Allowed(open = false), access.check(7, "token"))
+    }
+
+    @Test
+    fun `lists the ids of the user's exchanges`() = runTest {
+        val access = accessWith(HttpStatusCode.OK, """{"content": [{"id": 3, "status": "PENDING"}, {"id": 9, "status": "CANCELLED"}], "page": 0}""")
+        assertEquals(listOf(3L, 9L), access.exchangeIdsOf("token"))
     }
 
     @Test

@@ -35,6 +35,10 @@ private val log = LoggerFactory.getLogger("com.bookintok.chat.routes.ChatRoutes"
 
 private const val DEFAULT_PAGE = 50
 private const val MAX_PAGE = 100
+private const val MAX_INBOX_SYNC = 500
+
+/** How far back an inbox syncs when the client has never synced before. */
+private val DEFAULT_SYNC_WINDOW: java.time.Duration = java.time.Duration.ofDays(30)
 
 fun Route.chatRoutes(deps: ChatDependencies) {
     get("/health") { call.respondText("OK") }
@@ -47,15 +51,31 @@ fun Route.chatRoutes(deps: ChatDependencies) {
                 call.respond(HttpStatusCode.Forbidden)
                 return@get
             }
-            val before = call.request.queryParameters["before"]?.let {
-                try {
-                    Instant.parse(it)
-                } catch (_: DateTimeParseException) {
-                    throw BadRequestException("'before' must be an ISO-8601 instant")
-                }
-            }
+            val before = call.request.queryParameters["before"]?.let { call.instant(it, "before") }
             val limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceIn(1, MAX_PAGE) ?: DEFAULT_PAGE
             call.respond(deps.messages.history(exchangeId, before, limit).map { it.toDto() })
+        }
+
+        /**
+         * Messages of all the user's exchanges sent after `since` (oldest first), so the app can
+         * catch up with what arrived while it was closed and count what is unread.
+         */
+        get("/api/v1/inbox") {
+            val since = call.request.queryParameters["since"]?.let { call.instant(it, "since") }
+                ?: Instant.now().minus(DEFAULT_SYNC_WINDOW)
+            val exchangeIds = deps.exchangeAccess.exchangeIdsOf(call.bearerToken)
+            call.respond(deps.messages.since(exchangeIds, since, MAX_INBOX_SYNC).map { it.toDto() })
+        }
+
+        /** Events of every exchange of the user (new messages, deletions, status changes), while the app is open. */
+        webSocket("/ws/inbox") {
+            val uid = call.uid
+            deps.inboxes.join(uid, this)
+            try {
+                for (frame in incoming) Unit // nothing to receive: this socket only pushes
+            } finally {
+                deps.inboxes.leave(uid, this)
+            }
         }
 
         /** Real-time chat of one exchange. Clients send `{"content": "..."}` and receive [ServerEvent]s. */
@@ -74,7 +94,7 @@ fun Route.chatRoutes(deps: ChatDependencies) {
             try {
                 for (frame in incoming) {
                     if (frame !is Frame.Text) continue
-                    handleIncoming(deps, exchangeId, uid, access.open, frame.readText())
+                    handleIncoming(deps, exchangeId, uid, access, frame.readText())
                 }
             } finally {
                 deps.rooms.leave(exchangeId, this)
@@ -88,7 +108,7 @@ private suspend fun DefaultWebSocketServerSession.handleIncoming(
     deps: ChatDependencies,
     exchangeId: Long,
     uid: String,
-    exchangeOpen: Boolean,
+    access: AccessResult.Allowed,
     text: String,
 ) {
     val request = try {
@@ -100,19 +120,19 @@ private suspend fun DefaultWebSocketServerSession.handleIncoming(
     }
     when (request.type) {
         OutgoingMessageRequest.EXCHANGE_CHANGED -> {
-            deps.rooms.broadcast(exchangeId, ChatJson.encodeToString<ServerEvent>(ServerEvent.ExchangeChanged(exchangeId)))
+            deps.publish(exchangeId, access.participants, ServerEvent.ExchangeChanged(exchangeId))
             return
         }
-        OutgoingMessageRequest.DELETE_MESSAGE -> return deleteMessage(deps, exchangeId, uid, request.messageId)
+        OutgoingMessageRequest.DELETE_MESSAGE -> return deleteMessage(deps, exchangeId, uid, access, request.messageId)
     }
     val content = request.content?.trim().orEmpty()
     when {
-        !exchangeOpen -> sendEvent(ServerEvent.Error("This exchange is closed: the chat is read-only"))
+        !access.open -> sendEvent(ServerEvent.Error("This exchange is closed: the chat is read-only"))
         content.isEmpty() -> sendEvent(ServerEvent.Error("Message is empty"))
         content.length > MAX_MESSAGE_LENGTH -> sendEvent(ServerEvent.Error("Message is too long"))
         else -> {
             val saved = deps.messages.save(exchangeId, uid, content, Instant.now().truncatedTo(ChronoUnit.MILLIS))
-            deps.rooms.broadcast(exchangeId, ChatJson.encodeToString<ServerEvent>(ServerEvent.NewMessage(saved.toDto())))
+            deps.publish(exchangeId, access.participants, ServerEvent.NewMessage(saved.toDto()))
         }
     }
 }
@@ -122,6 +142,7 @@ private suspend fun DefaultWebSocketServerSession.deleteMessage(
     deps: ChatDependencies,
     exchangeId: Long,
     uid: String,
+    access: AccessResult.Allowed,
     messageId: String?,
 ) {
     val message = messageId?.let { deps.messages.find(it) }
@@ -132,9 +153,22 @@ private suspend fun DefaultWebSocketServerSession.deleteMessage(
             sendEvent(ServerEvent.Error("Messages can only be deleted during the first 30 minutes"))
         else -> {
             deps.messages.delete(message.id)
-            deps.rooms.broadcast(exchangeId, ChatJson.encodeToString<ServerEvent>(ServerEvent.MessageDeleted(message.id)))
+            deps.publish(exchangeId, access.participants, ServerEvent.MessageDeleted(message.id, exchangeId))
         }
     }
+}
+
+/** Sends an event to everyone in the exchange's chat and to both participants' inboxes. */
+private suspend fun ChatDependencies.publish(exchangeId: Long, participants: Set<String>, event: ServerEvent) {
+    val text = ChatJson.encodeToString<ServerEvent>(event)
+    rooms.broadcast(exchangeId, text)
+    inboxes.send(participants, text)
+}
+
+private fun ApplicationCall.instant(value: String, name: String): Instant = try {
+    Instant.parse(value)
+} catch (_: DateTimeParseException) {
+    throw BadRequestException("'$name' must be an ISO-8601 instant")
 }
 
 private suspend fun DefaultWebSocketServerSession.sendEvent(event: ServerEvent) {
