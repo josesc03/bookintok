@@ -124,6 +124,21 @@ data class ExchangeDto(
 data class ExchangeRequestDto(val exchange: ExchangeDto, val created: Boolean)
 
 @Serializable
+enum class ReportReason(val label: String) {
+    SPAM("Spam o publicidad"),
+    SCAM("Estafa o pide dinero"),
+    HARASSMENT("Acoso o insultos"),
+    INAPPROPRIATE("Contenido inapropiado"),
+    OTHER("Otro motivo"),
+}
+
+@Serializable
+data class ReportRequest(val reason: ReportReason, val comment: String? = null, val exchangeId: Long? = null)
+
+@Serializable
+data class BlockedUserDto(val uid: String, val nickname: String, val blockedAt: String)
+
+@Serializable
 data class RateUserRequest(val score: Int, val comment: String? = null)
 
 @Serializable

@@ -1,5 +1,10 @@
 package com.bookintok.app.ui.chat
 
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.PersonOff
+import com.bookintok.app.ui.safety.BlockDialog
+import com.bookintok.app.ui.safety.ReportSheet
+import com.bookintok.app.ui.safety.SafetyViewModel
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -100,7 +105,9 @@ private val dayFormat = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ChatScreen(nav: AppNavigator, viewModel: ChatViewModel = hiltViewModel()) {
+fun ChatScreen(nav: AppNavigator, viewModel: ChatViewModel = hiltViewModel(), safety: SafetyViewModel = hiltViewModel()) {
+    var reporting by remember { mutableStateOf(false) }
+    var blocking by remember { mutableStateOf(false) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showRating by remember { mutableStateOf(false) }
     var confirmCancel by remember { mutableStateOf(false) }
@@ -154,6 +161,8 @@ fun ChatScreen(nav: AppNavigator, viewModel: ChatViewModel = hiltViewModel()) {
                             onBook = { exchange?.let { nav.openBook(it.bookId) } },
                             onArchive = viewModel::toggleArchived,
                             onCancel = { confirmCancel = true },
+                            onReport = { reporting = true },
+                            onBlock = { blocking = true },
                         )
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -249,6 +258,35 @@ fun ChatScreen(nav: AppNavigator, viewModel: ChatViewModel = hiltViewModel()) {
             },
         )
     }
+    val safetyState by safety.state.collectAsStateWithLifecycle()
+    LaunchedEffect(safetyState.message) {
+        safetyState.message?.let {
+            viewModel.showNotice(it)
+            safety.dismissMessage()
+        }
+    }
+    LaunchedEffect(safetyState.blocked) { if (safetyState.blocked) viewModel.onBlocked() }
+    if (reporting && counterpart != null) {
+        ReportSheet(
+            nickname = counterpart.nickname,
+            working = safetyState.working,
+            onDismiss = { reporting = false },
+            onSend = { reason, comment ->
+                safety.report(counterpart.uid, reason, comment, exchange?.id)
+                reporting = false
+            },
+        )
+    }
+    if (blocking && counterpart != null) {
+        BlockDialog(
+            nickname = counterpart.nickname,
+            onDismiss = { blocking = false },
+            onConfirm = {
+                safety.block(counterpart.uid, counterpart.nickname)
+                blocking = false
+            },
+        )
+    }
     if (confirmCancel) {
         AlertDialog(
             onDismissRequest = { confirmCancel = false },
@@ -266,7 +304,15 @@ fun ChatScreen(nav: AppNavigator, viewModel: ChatViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun ChatMenu(state: ChatUiState, onProfile: () -> Unit, onBook: () -> Unit, onArchive: () -> Unit, onCancel: () -> Unit) {
+private fun ChatMenu(
+    state: ChatUiState,
+    onProfile: () -> Unit,
+    onBook: () -> Unit,
+    onArchive: () -> Unit,
+    onCancel: () -> Unit,
+    onReport: () -> Unit,
+    onBlock: () -> Unit,
+) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Opciones del chat") }
@@ -296,8 +342,24 @@ private fun ChatMenu(state: ChatUiState, onProfile: () -> Unit, onBook: () -> Un
                     onArchive()
                 },
             )
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = { Text("Denunciar") },
+                leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) },
+                onClick = {
+                    open = false
+                    onReport()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Bloquear a @${state.counterpart?.nickname.orEmpty()}", color = MaterialTheme.colorScheme.error) },
+                leadingIcon = { Icon(Icons.Default.PersonOff, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                onClick = {
+                    open = false
+                    onBlock()
+                },
+            )
             if (state.exchange?.isOpen == true) {
-                HorizontalDivider()
                 DropdownMenuItem(
                     text = { Text("Cancelar intercambio", color = MaterialTheme.colorScheme.error) },
                     leadingIcon = { Icon(Icons.Default.Block, contentDescription = null, tint = MaterialTheme.colorScheme.error) },

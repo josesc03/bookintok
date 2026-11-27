@@ -1,5 +1,25 @@
 package com.bookintok.app.ui.auth
 
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.bookintok.app.core.legal.LegalDocument
+import com.bookintok.app.core.legal.LegalTexts
+import com.bookintok.app.ui.settings.LegalDocumentContent
+import com.bookintok.app.ui.theme.BookintokColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -91,6 +111,41 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
             onClick = viewModel::toggleMode,
             modifier = Modifier.align(Alignment.CenterHorizontally),
         )
+        LegalConsent()
+    }
+}
+
+/** "By continuing you accept…", with both documents one tap away (this screen is outside the navigation graph). */
+@Composable
+private fun LegalConsent() {
+    var shown by remember { mutableStateOf<LegalDocument?>(null) }
+    val link = SpanStyle(color = BookintokColors.GreenDeep, fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline)
+    val text = buildAnnotatedString {
+        append("Al continuar aceptas los ")
+        withLink(LinkAnnotation.Clickable("terms", TextLinkStyles(link)) { shown = LegalTexts.terms }) { append("Términos de uso") }
+        append(" y la ")
+        withLink(LinkAnnotation.Clickable("privacy", TextLinkStyles(link)) { shown = LegalTexts.privacy }) { append("Política de privacidad") }
+        append(".")
+    }
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    shown?.let { document ->
+        Dialog(onDismissRequest = { shown = null }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { shown = null }) { Icon(Icons.Default.Close, contentDescription = "Cerrar") }
+                        Text(document.title, style = MaterialTheme.typography.titleLarge)
+                    }
+                    LegalDocumentContent(document)
+                }
+            }
+        }
     }
 }
 

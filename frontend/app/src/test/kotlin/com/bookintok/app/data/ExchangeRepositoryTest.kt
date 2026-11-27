@@ -69,6 +69,23 @@ class ExchangeRepositoryTest {
     }
 
     @Test
+    fun `exchanges the server no longer returns are removed from the cache`() = runTest {
+        database.exchangeDao().upsert(
+            listOf(
+                com.bookintok.app.core.database.ExchangeEntity(
+                    id = 99, status = ExchangeStatus.PENDING, bookId = 5, bookTitle = "Gone", bookImageUrl = null,
+                    ownerUid = "owner", ownerNickname = "ana", ownerConfirmed = false,
+                    requesterUid = "deleted", requesterNickname = "deleted", requesterConfirmed = false, updatedAt = 0,
+                ),
+            ),
+        )
+
+        repository().refreshAll()
+
+        assertEquals(listOf(2L, 1L), database.exchangeDao().observeAll().first().map { it.id })
+    }
+
+    @Test
     fun `confirming updates the cached exchange`() = runTest {
         val repository = repository()
         repository.refreshAll()

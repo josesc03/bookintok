@@ -65,6 +65,26 @@ class BookintokApi @Inject constructor(
     suspend fun rate(uid: String, request: RateUserRequest): RatingDto =
         send(HttpMethod.Post, "/api/v1/users/$uid/ratings") { json(request) }.body()
 
+    // Safety and account
+
+    suspend fun report(uid: String, request: ReportRequest) {
+        send(HttpMethod.Post, "/api/v1/users/$uid/reports") { json(request) }
+    }
+
+    suspend fun block(uid: String) {
+        send(HttpMethod.Put, "/api/v1/users/me/blocks/$uid")
+    }
+
+    suspend fun unblock(uid: String) {
+        send(HttpMethod.Delete, "/api/v1/users/me/blocks/$uid")
+    }
+
+    suspend fun blocked(): List<BlockedUserDto> = send(HttpMethod.Get, "/api/v1/users/me/blocks").body()
+
+    suspend fun deleteAccount() {
+        send(HttpMethod.Delete, "/api/v1/users/me")
+    }
+
     // Books
 
     suspend fun searchBooks(search: BookSearch, page: Int): PageDto<BookDto> =

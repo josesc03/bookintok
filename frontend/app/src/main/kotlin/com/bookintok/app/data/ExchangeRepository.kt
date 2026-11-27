@@ -50,7 +50,9 @@ class DefaultExchangeRepository @Inject constructor(
     override fun observe(id: Long) = dao.observe(id).map { it?.toModel() }
 
     override suspend fun refreshAll() {
-        dao.upsert(api.myExchanges().content.map { it.toEntity() })
+        val exchanges = api.myExchanges().content.map { it.toEntity() }
+        dao.upsert(exchanges)
+        dao.deleteMissing(exchanges.map { it.id }.ifEmpty { listOf(-1L) })
     }
 
     override suspend fun refresh(id: Long) {

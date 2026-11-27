@@ -117,6 +117,8 @@ class BookintokMessagingService : FirebaseMessagingService() {
 
     @Inject lateinit var auth: AuthRepository
 
+    @Inject lateinit var preferences: com.bookintok.app.data.NotificationPreferences
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onNewToken(token: String) {
@@ -127,6 +129,7 @@ class BookintokMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
         val exchangeId = data["exchangeId"]?.toLongOrNull() ?: return
+        if (!preferences.allows(data["type"])) return
         ChatNotifications.show(this, exchangeId, data["title"].orEmpty().ifEmpty { "Bookintok" }, data["body"].orEmpty())
     }
 }

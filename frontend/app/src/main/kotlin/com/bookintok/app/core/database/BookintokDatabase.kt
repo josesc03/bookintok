@@ -95,6 +95,10 @@ interface ExchangeDao {
     @Upsert
     suspend fun upsert(exchanges: List<ExchangeEntity>)
 
+    /** Exchanges the server no longer returns (for example, the other user deleted their account). */
+    @Query("DELETE FROM exchanges WHERE id NOT IN (:keepIds)")
+    suspend fun deleteMissing(keepIds: List<Long>)
+
     @Query("DELETE FROM exchanges")
     suspend fun clear()
 }

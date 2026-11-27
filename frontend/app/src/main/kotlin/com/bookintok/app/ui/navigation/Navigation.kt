@@ -1,5 +1,11 @@
 package com.bookintok.app.ui.navigation
 
+import androidx.navigation.toRoute
+import com.bookintok.app.core.legal.LegalTexts
+import com.bookintok.app.ui.settings.BlockedUsersScreen
+import com.bookintok.app.ui.settings.LegalScreen
+import com.bookintok.app.ui.settings.LicensesScreen
+import com.bookintok.app.ui.settings.SettingsScreen
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -97,6 +103,19 @@ data class ChatRoute(val exchangeId: Long, val created: Boolean = false, val exi
 @Serializable
 data object LocationRoute
 
+@Serializable
+data object SettingsRoute
+
+@Serializable
+data object BlockedUsersRoute
+
+@Serializable
+data object LicensesRoute
+
+/** [document] is LegalTexts.PRIVACY or LegalTexts.TERMS. */
+@Serializable
+data class LegalRoute(val document: String)
+
 /** Another user's public profile. */
 @Serializable
 data class UserProfileRoute(val uid: String)
@@ -158,6 +177,10 @@ fun BookintokNavHost(
         newBook = { navController.navigate(BookEditorRoute()) },
         changeLocation = { navController.navigate(LocationRoute) },
         back = { navController.navigateUp() },
+        openSettings = { navController.navigate(SettingsRoute) },
+        openBlocked = { navController.navigate(BlockedUsersRoute) },
+        openLegal = { navController.navigate(LegalRoute(it)) },
+        openLicenses = { navController.navigate(LicensesRoute) },
     )
 
     Scaffold(
@@ -232,6 +255,10 @@ fun BookintokNavHost(
                     }
                     screen<ChatRoute> { ChatScreen(nav) }
                     screen<UserProfileRoute> { UserProfileScreen(nav) }
+                    screen<SettingsRoute> { SettingsScreen(nav) }
+                    screen<BlockedUsersRoute> { BlockedUsersScreen(nav) }
+                    screen<LicensesRoute> { LicensesScreen(nav) }
+                    screen<LegalRoute> { entry -> LegalScreen(nav, LegalTexts.byKey(entry.toRoute<LegalRoute>().document)) }
                     screen<LocationRoute> {
                         LocationScreen(onDone = { navController.popBackStack() }, onBack = { navController.navigateUp() })
                     }
@@ -252,6 +279,10 @@ class AppNavigator(
     val newBook: () -> Unit,
     val changeLocation: () -> Unit,
     val back: () -> Unit,
+    val openSettings: () -> Unit = {},
+    val openBlocked: () -> Unit = {},
+    val openLegal: (String) -> Unit = {},
+    val openLicenses: () -> Unit = {},
 )
 
 /** Main tabs switch with a plain cross-fade. */

@@ -38,6 +38,9 @@ android {
         buildConfigField("String", "FIREBASE_API_KEY", configValue("firebase.apiKey"))
         buildConfigField("String", "FIREBASE_SENDER_ID", configValue("firebase.senderId"))
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", configValue("firebase.webClientId"))
+        // Shown in the privacy policy: who is responsible for the data and how to contact them
+        buildConfigField("String", "LEGAL_OWNER", configValue("legal.owner"))
+        buildConfigField("String", "LEGAL_EMAIL", configValue("legal.email"))
     }
 
     buildTypes {

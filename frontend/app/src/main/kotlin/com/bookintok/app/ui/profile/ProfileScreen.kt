@@ -1,5 +1,7 @@
 package com.bookintok.app.ui.profile
 
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.IconButton
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -96,6 +98,7 @@ fun ProfileScreen(nav: AppNavigator, viewModel: ProfileViewModel = hiltViewModel
         topBar = {
             TopAppBar(
                 title = { Text("Perfil", style = MaterialTheme.typography.headlineMedium) },
+                actions = { IconButton(onClick = nav.openSettings) { Icon(Icons.Default.Settings, contentDescription = "Ajustes") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
@@ -127,35 +130,8 @@ fun ProfileScreen(nav: AppNavigator, viewModel: ProfileViewModel = hiltViewModel
                     booksEmpty = "Publica tu primer libro desde Explorar.",
                     onBookClick = nav.openBook,
                     contentPadding = padding,
-                    footer = {
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "settings") {
-                            Settings(onLocation = nav.changeLocation, onSignOut = viewModel::signOut)
-                        }
-                    },
                 )
             }
         }
     }
 }
-
-@Composable
-private fun Settings(onLocation: () -> Unit, onSignOut: () -> Unit) {
-    val colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background)
-    Column(Modifier.padding(top = 16.dp)) {
-        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
-        ListItem(
-            headlineContent = { Text("Cambiar ubicación") },
-            supportingContent = { Text("GPS, provincia o un punto en el mapa") },
-            leadingContent = { Icon(Icons.Default.EditLocationAlt, contentDescription = null) },
-            colors = colors,
-            modifier = Modifier.clickable(onClick = onLocation),
-        )
-        ListItem(
-            headlineContent = { Text("Cerrar sesión", color = MaterialTheme.colorScheme.error) },
-            leadingContent = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-            colors = colors,
-            modifier = Modifier.clickable(onClick = onSignOut),
-        )
-    }
-}
-

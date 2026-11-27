@@ -101,5 +101,8 @@ abstract class BindingsModule {
     abstract fun unreadRepository(impl: DefaultUnreadRepository): UnreadRepository
 
     @Binds
+    abstract fun safetyRepository(impl: com.bookintok.app.data.DefaultSafetyRepository): com.bookintok.app.data.SafetyRepository
+
+    @Binds
     abstract fun chatRepository(impl: DefaultChatRepository): ChatRepository
 }

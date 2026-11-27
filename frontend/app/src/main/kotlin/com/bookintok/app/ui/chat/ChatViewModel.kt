@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.bookintok.app.core.auth.AuthRepository
+import com.bookintok.app.core.network.ApiException
 import com.bookintok.app.core.network.ExchangeStatus
 import com.bookintok.app.data.ChatConnection
 import com.bookintok.app.data.ChatMessage
@@ -144,7 +145,13 @@ class ChatViewModel @Inject constructor(
     }
 
     fun requestReopen() = launchCatching {
-        exchanges.requestReopen(exchangeId)
+        try {
+            exchanges.requestReopen(exchangeId)
+        } catch (e: ApiException) {
+            if (e.status != 403) throw e
+            local.update { it.copy(notice = "No se puede retomar: uno de los dos ha bloqueado al otro.") }
+            return@launchCatching
+        }
         chat.notifyExchangeChanged(exchangeId, ExchangeEvent.REOPEN_REQUESTED)
         local.update { it.copy(notice = "Le hemos pedido a @${state.value.counterpart?.nickname.orEmpty()} retomar el intercambio") }
     }
@@ -199,6 +206,16 @@ class ChatViewModel @Inject constructor(
     }
 
     fun dismissNotice() = local.update { it.copy(notice = null) }
+
+    fun showNotice(text: String) = local.update { it.copy(notice = text) }
+
+    /** Blocking cancels the exchange on the server: reload it and let the other side's app know (no notification). */
+    fun onBlocked() {
+        viewModelScope.launch {
+            runCatching { exchanges.refresh(exchangeId) }
+            chat.notifyExchangeChanged(exchangeId)
+        }
+    }
 
     fun rate(score: Int, comment: String?) = launchCatching {
         val exchange = state.value.exchange ?: return@launchCatching
