@@ -33,7 +33,8 @@ class ApiExchangeAccessTest {
     }
 
     @Test
-    fun `completed exchange is read-only`() = runTest {
+    fun `cancelled exchanges stay writable, completed ones are read-only`() = runTest {
+        assertEquals(AccessResult.Allowed(open = true), accessWith(HttpStatusCode.OK, """{"id": 7, "status": "CANCELLED"}""").check(7, "token"))
         val access = accessWith(HttpStatusCode.OK, """{"id": 7, "status": "COMPLETED"}""")
         assertEquals(AccessResult.Allowed(open = false), access.check(7, "token"))
     }

@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 
 sealed interface AccessResult {
-    /** The user takes part in the exchange. Only open (pending) exchanges accept new messages. */
+    /** The user takes part in the exchange. Completed exchanges do not accept new messages. */
     data class Allowed(val open: Boolean) : AccessResult
 
     data object Denied : AccessResult
@@ -44,7 +44,8 @@ class ApiExchangeAccess(private val client: HttpClient, private val apiBaseUrl: 
         return when (response.status) {
             HttpStatusCode.OK -> {
                 val exchange = ChatJson.decodeFromString<ExchangeSummary>(response.bodyAsText())
-                AccessResult.Allowed(open = exchange.status == "PENDING")
+                // Completed exchanges are read-only; cancelled ones stay open so people can still talk
+                AccessResult.Allowed(open = exchange.status != "COMPLETED")
             }
             HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden, HttpStatusCode.NotFound -> AccessResult.Denied
             else -> throw UpstreamUnavailableException("API answered ${response.status}")
