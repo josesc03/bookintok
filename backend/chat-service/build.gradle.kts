@@ -40,6 +40,7 @@ dependencies {
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.cio)
     implementation(libs.mongodb.coroutine)
+    implementation(libs.firebase.admin)
     implementation(libs.logback)
 
     testImplementation(libs.ktor.server.test.host)

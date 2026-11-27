@@ -1,6 +1,9 @@
 package com.bookintok.app
 
+import android.content.Intent
 import android.os.Bundle
+import com.bookintok.app.push.ChatNotifications
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -31,8 +34,12 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val session: SessionViewModel by viewModels()
 
+    /** Chat to open because the user tapped a notification. */
+    private val chatFromNotification = MutableStateFlow<Long?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) readChatFrom(intent)
         enableEdgeToEdge()
         setContent {
             BookintokTheme {
@@ -49,13 +56,26 @@ class MainActivity : ComponentActivity() {
                             is SessionState.NeedsEmailVerification -> VerifyEmailScreen(email = current.email, onVerified = session::refresh)
                             SessionState.NeedsProfile -> ProfileSetupScreen(onCreated = session::refresh)
                             SessionState.NeedsLocation -> LocationScreen(onDone = session::refresh)
-                            is SessionState.Ready -> BookintokNavHost()
+                            is SessionState.Ready -> {
+                                val pendingChat by chatFromNotification.collectAsStateWithLifecycle()
+                                BookintokNavHost(pendingChat = pendingChat, onPendingChatOpened = { chatFromNotification.value = null })
+                            }
                             else -> Unit
                         }
                     }
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        readChatFrom(intent)
+    }
+
+    private fun readChatFrom(intent: Intent?) {
+        val id = intent?.getLongExtra(ChatNotifications.EXTRA_EXCHANGE_ID, -1L) ?: -1L
+        if (id > 0) chatFromNotification.value = id
     }
 
     private companion object {

@@ -12,7 +12,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
+import io.ktor.client.request.put
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.ApplicationTestBuilder
@@ -34,6 +39,7 @@ class ChatRoutesTest {
     private val messages = InMemoryMessageRepository()
     private val rooms = ChatRooms()
     private val inboxes = Inboxes()
+    private val devices = com.bookintok.chat.push.InMemoryDevices()
 
     private fun chatTest(block: suspend ApplicationTestBuilder.() -> Unit) = testApplication {
         application {
@@ -49,6 +55,7 @@ class ChatRoutesTest {
                     messages = messages,
                     rooms = rooms,
                     inboxes = inboxes,
+                    devices = devices,
                 ),
             )
         }
@@ -221,6 +228,20 @@ class ChatRoutesTest {
         val response = client.get("/api/v1/inbox?since=${base.plusSeconds(1)}") { bearerAuth(TestTokens.forUser("reader")) }
         val body = ChatJson.decodeFromString<List<MessageDto>>(response.bodyAsText())
         assertEquals(listOf("new"), body.map { it.content })
+    }
+
+    @Test
+    fun `devices register their push token and remove it when signing out`() = chatTest {
+        val put = client.put("/api/v1/devices") {
+            bearerAuth(TestTokens.forUser("reader"))
+            contentType(ContentType.Application.Json)
+            setBody("""{"token": "fcm-token-1"}""")
+        }
+        assertEquals(HttpStatusCode.NoContent, put.status)
+        assertEquals(listOf("fcm-token-1"), devices.tokensOf("reader"))
+
+        client.delete("/api/v1/devices?token=fcm-token-1") { bearerAuth(TestTokens.forUser("reader")) }
+        assertEquals(emptyList(), devices.tokensOf("reader"))
     }
 
     @Test

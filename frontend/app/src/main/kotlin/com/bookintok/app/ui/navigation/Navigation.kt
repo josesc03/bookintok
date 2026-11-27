@@ -1,5 +1,10 @@
 package com.bookintok.app.ui.navigation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
@@ -34,6 +39,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -110,8 +117,28 @@ private const val DURATION = 320
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun BookintokNavHost(inbox: InboxViewModel = hiltViewModel()) {
+fun BookintokNavHost(
+    pendingChat: Long? = null,
+    onPendingChatOpened: () -> Unit = {},
+    inbox: InboxViewModel = hiltViewModel(),
+) {
     val navController = rememberNavController()
+    LaunchedEffect(pendingChat) {
+        pendingChat?.let {
+            navController.navigate(ChatRoute(it)) { launchSingleTop = true }
+            onPendingChatOpened()
+        }
+    }
+    // Android 13+ asks before showing notifications; asked once, when the user is already in the app
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
     val unread by inbox.unreadTotal.collectAsStateWithLifecycle()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle) {

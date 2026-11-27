@@ -67,6 +67,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -79,6 +80,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bookintok.app.core.network.ExchangeStatus
 import com.bookintok.app.data.ChatConnection
 import com.bookintok.app.data.ChatMessage
+import com.bookintok.app.push.ChatNotifications
 import com.bookintok.app.ui.common.InfoBanner
 import com.bookintok.app.ui.components.Avatar
 import com.bookintok.app.ui.components.GhostButton
@@ -108,7 +110,11 @@ fun ChatScreen(nav: AppNavigator, viewModel: ChatViewModel = hiltViewModel()) {
     val counterpart = state.counterpart
 
     // What is on screen counts as read (this runs only while the chat is displayed)
-    LaunchedEffect(state.messages.lastOrNull()?.id) { viewModel.markRead() }
+    val context = LocalContext.current
+    LaunchedEffect(state.messages.lastOrNull()?.id) {
+        viewModel.markRead()
+        state.exchange?.let { ChatNotifications.cancel(context, it.id) }
+    }
 
     // Keep the newest message in view as messages arrive
     LaunchedEffect(state.messages.size) {

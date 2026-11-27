@@ -52,7 +52,13 @@ fun ChatMessage.toDto() = MessageDto(id, exchangeId, senderUid, content, sentAt.
  * - `{"type": "delete_message", "messageId": "..."}` to take back one of their own recent messages
  */
 @Serializable
-data class OutgoingMessageRequest(val content: String? = null, val type: String? = null, val messageId: String? = null) {
+data class OutgoingMessageRequest(
+    val content: String? = null,
+    val type: String? = null,
+    val messageId: String? = null,
+    /** With exchange_changed: what happened (created, confirmed, cancelled, reopen_requested...), for notifications. */
+    val event: String? = null,
+) {
     companion object {
         const val EXCHANGE_CHANGED = "exchange_changed"
         const val DELETE_MESSAGE = "delete_message"

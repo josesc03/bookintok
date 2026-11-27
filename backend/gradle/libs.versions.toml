@@ -6,6 +6,7 @@ springdoc = "3.2.1"
 ktor = "3.6.2"
 logback = "1.6.8"
 mongodb = "5.15.0"
+firebase-admin = "9.12.0"
 testcontainers = "2.0.5"
 mockk = "1.14.12"
 
@@ -31,6 +32,7 @@ ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", 
 logback = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql", version.ref = "testcontainers" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+firebase-admin = { module = "com.google.firebase:firebase-admin", version.ref = "firebase-admin" }
 mongodb-coroutine = { module = "org.mongodb:mongodb-driver-kotlin-coroutine", version.ref = "mongodb" }
 testcontainers-mongodb = { module = "org.testcontainers:testcontainers-mongodb", version.ref = "testcontainers" }
 kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin" }

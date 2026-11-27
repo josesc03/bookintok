@@ -50,6 +50,10 @@ services:
       MONGO_DATABASE: bookintok_chat
       API_BASE_URL: http://api:8080
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      # Optional: without this key the chat works, only push notifications are disabled
+      FIREBASE_CREDENTIALS_FILE: /run/secrets/bookintok/firebase-service-account.json
+    volumes:
+      - ./secrets:/run/secrets/bookintok:ro
     ports:
       - "8081:8081"
     depends_on:

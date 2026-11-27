@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bookintok.app.core.auth.AuthRepository
 import com.bookintok.app.data.InboxManager
+import com.bookintok.app.push.DeviceRegistration
+import kotlinx.coroutines.launch
 import com.bookintok.app.data.UnreadRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,7 +19,13 @@ class InboxViewModel @Inject constructor(
     private val inbox: InboxManager,
     unread: UnreadRepository,
     auth: AuthRepository,
+    registration: DeviceRegistration,
 ) : ViewModel() {
+
+    init {
+        // So notifications reach this device while the app is closed (best effort: retried on next start)
+        viewModelScope.launch { runCatching { registration.register() } }
+    }
 
     /** Messages not read yet across all chats, for the badge of the Chats tab. */
     val unreadTotal = unread.unreadCounts(auth.currentUidNow().orEmpty())

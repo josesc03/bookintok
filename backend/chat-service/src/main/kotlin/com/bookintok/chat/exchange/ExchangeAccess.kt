@@ -16,7 +16,13 @@ sealed interface AccessResult {
      * and cancelled ones are read-only (a cancelled one can be resumed through the API).
      * [participants] are both users, so events can also reach their inboxes.
      */
-    data class Allowed(val open: Boolean, val participants: Set<String> = emptySet()) : AccessResult
+    data class Allowed(
+        val open: Boolean,
+        val participants: Set<String> = emptySet(),
+        /** uid → nickname, and the book title: what push notifications show. */
+        val nicknames: Map<String, String> = emptyMap(),
+        val bookTitle: String = "",
+    ) : AccessResult
 
     data object Denied : AccessResult
 }
@@ -40,10 +46,19 @@ class ApiExchangeAccess(private val client: HttpClient, private val apiBaseUrl: 
     private val log = LoggerFactory.getLogger(javaClass)
 
     @Serializable
-    private data class Participant(val uid: String)
+    private data class Participant(val uid: String, val nickname: String = "")
 
     @Serializable
-    private data class ExchangeSummary(val id: Long, val status: String, val owner: Participant? = null, val requester: Participant? = null)
+    private data class Book(val title: String = "")
+
+    @Serializable
+    private data class ExchangeSummary(
+        val id: Long,
+        val status: String,
+        val owner: Participant? = null,
+        val requester: Participant? = null,
+        val book: Book? = null,
+    )
 
     @Serializable
     private data class ExchangePage(val content: List<ExchangeSummary>)
@@ -56,6 +71,8 @@ class ApiExchangeAccess(private val client: HttpClient, private val apiBaseUrl: 
                 AccessResult.Allowed(
                     open = exchange.status == "PENDING",
                     participants = setOfNotNull(exchange.owner?.uid, exchange.requester?.uid),
+                    nicknames = listOfNotNull(exchange.owner, exchange.requester).associate { it.uid to it.nickname },
+                    bookTitle = exchange.book?.title.orEmpty(),
                 )
             }
             HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden, HttpStatusCode.NotFound -> AccessResult.Denied

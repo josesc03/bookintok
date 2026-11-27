@@ -1,5 +1,6 @@
 package com.bookintok.app.data
 
+import com.bookintok.app.push.DeviceRegistration
 import com.bookintok.app.core.auth.AuthRepository
 import com.bookintok.app.core.database.BookintokDatabase
 import com.bookintok.app.core.network.ApiException
@@ -59,6 +60,7 @@ class DefaultUserRepository @Inject constructor(
     private val api: BookintokApi,
     private val auth: AuthRepository,
     private val database: BookintokDatabase,
+    private val devices: DeviceRegistration,
 ) : UserRepository {
 
     override suspend fun myProfile(): MyProfileDto? = try {
@@ -82,6 +84,8 @@ class DefaultUserRepository @Inject constructor(
     }
 
     override suspend fun signOut() {
+        // While still signed in: this device must stop getting the account's notifications
+        runCatching { devices.unregister() }
         auth.signOut()
         withContext(Dispatchers.IO) { database.clearAllTables() }
     }

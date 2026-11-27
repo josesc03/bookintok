@@ -36,6 +36,7 @@ android {
         buildConfigField("String", "FIREBASE_PROJECT_ID", configValue("firebase.projectId"))
         buildConfigField("String", "FIREBASE_APP_ID", configValue("firebase.appId"))
         buildConfigField("String", "FIREBASE_API_KEY", configValue("firebase.apiKey"))
+        buildConfigField("String", "FIREBASE_SENDER_ID", configValue("firebase.senderId"))
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", configValue("firebase.webClientId"))
     }
 
@@ -97,6 +98,7 @@ dependencies {
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
+    implementation(libs.firebase.messaging)
     implementation(libs.credentials)
     implementation(libs.credentials.play.services)
     implementation(libs.googleid)

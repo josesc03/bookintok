@@ -44,6 +44,16 @@ sealed interface ChatConnection {
     data class Rejected(val reason: String) : ChatConnection
 }
 
+/** What changed in an exchange; the server turns it into a fixed notification text. */
+enum class ExchangeEvent(val wire: String) {
+    CREATED("created"),
+    CONFIRMED("confirmed"),
+    CANCELLED("cancelled"),
+    REOPEN_REQUESTED("reopen_requested"),
+    REOPEN_ACCEPTED("reopen_accepted"),
+    REOPEN_REJECTED("reopen_rejected"),
+}
+
 class NotConnectedException : IllegalStateException("The chat is not connected")
 
 interface ChatRepository {
@@ -68,7 +78,7 @@ interface ChatRepository {
     suspend fun deleteMessage(exchangeId: Long, messageId: String)
 
     /** Tells the other participant that the exchange changed (best effort: ignored when offline). */
-    suspend fun notifyExchangeChanged(exchangeId: Long)
+    suspend fun notifyExchangeChanged(exchangeId: Long, event: ExchangeEvent? = null)
 }
 
 @Singleton
@@ -160,8 +170,8 @@ class DefaultChatRepository @Inject constructor(
         queue.send(OutgoingMessage(type = "delete_message", messageId = messageId))
     }
 
-    override suspend fun notifyExchangeChanged(exchangeId: Long) {
-        outgoing[exchangeId]?.send(OutgoingMessage(type = "exchange_changed"))
+    override suspend fun notifyExchangeChanged(exchangeId: Long, event: ExchangeEvent?) {
+        outgoing[exchangeId]?.send(OutgoingMessage(type = "exchange_changed", event = event?.wire))
     }
 
     companion object {

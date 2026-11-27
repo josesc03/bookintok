@@ -156,7 +156,13 @@ data class MessageDto(
 )
 
 @Serializable
-data class OutgoingMessage(val content: String? = null, val type: String? = null, val messageId: String? = null)
+data class OutgoingMessage(
+    val content: String? = null,
+    val type: String? = null,
+    val messageId: String? = null,
+    /** With exchange_changed: what happened, so the other participant gets the right notification. */
+    val event: String? = null,
+)
 
 @Serializable
 sealed interface ServerEvent {

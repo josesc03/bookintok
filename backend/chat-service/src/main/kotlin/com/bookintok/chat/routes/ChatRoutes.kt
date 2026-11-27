@@ -18,7 +18,12 @@ import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
+import io.ktor.server.request.receive
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
+import io.ktor.server.routing.put
+import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.server.websocket.webSocket
 import io.ktor.websocket.CloseReason
@@ -65,6 +70,21 @@ fun Route.chatRoutes(deps: ChatDependencies) {
                 ?: Instant.now().minus(DEFAULT_SYNC_WINDOW)
             val exchangeIds = deps.exchangeAccess.exchangeIdsOf(call.bearerToken)
             call.respond(deps.messages.since(exchangeIds, since, MAX_INBOX_SYNC).map { it.toDto() })
+        }
+
+        /** The app registers its Firebase Cloud Messaging token to get notifications while closed. */
+        put("/api/v1/devices") {
+            val token = call.receive<DeviceRequest>().token.trim()
+            if (token.isEmpty() || token.length > MAX_TOKEN_LENGTH) throw BadRequestException("Invalid device token")
+            deps.devices.register(call.uid, token)
+            call.respond(HttpStatusCode.NoContent)
+        }
+
+        /** Called when signing out, so the device stops getting this user's notifications. */
+        delete("/api/v1/devices") {
+            val token = call.request.queryParameters["token"] ?: throw BadRequestException("Missing token")
+            deps.devices.unregister(call.uid, token)
+            call.respond(HttpStatusCode.NoContent)
         }
 
         /** Events of every exchange of the user (new messages, deletions, status changes), while the app is open. */
@@ -122,6 +142,7 @@ private suspend fun DefaultWebSocketServerSession.handleIncoming(
     when (request.type) {
         OutgoingMessageRequest.EXCHANGE_CHANGED -> {
             deps.publish(exchangeId, access.participants, ServerEvent.ExchangeChanged(exchangeId))
+            request.event?.let { deps.notifyExchangeEvent(exchangeId, uid, access, it) }
             return
         }
         OutgoingMessageRequest.DELETE_MESSAGE -> return deleteMessage(deps, exchangeId, uid, access, request.messageId)
@@ -134,6 +155,15 @@ private suspend fun DefaultWebSocketServerSession.handleIncoming(
         else -> {
             val saved = deps.messages.save(exchangeId, uid, content, Instant.now().truncatedTo(ChronoUnit.MILLIS))
             deps.publish(exchangeId, access.participants, ServerEvent.NewMessage(saved.toDto()))
+            deps.notifyInBackground(
+                access.participants - uid,
+                mapOf(
+                    "type" to "message",
+                    "exchangeId" to exchangeId.toString(),
+                    "title" to "@${access.nicknames[uid].orEmpty()} · ${access.bookTitle}",
+                    "body" to content.take(PUSH_PREVIEW_LENGTH),
+                ),
+            )
         }
     }
 }
@@ -157,6 +187,35 @@ private suspend fun DefaultWebSocketServerSession.deleteMessage(
             deps.publish(exchangeId, access.participants, ServerEvent.MessageDeleted(message.id, exchangeId))
         }
     }
+}
+
+private const val MAX_TOKEN_LENGTH = 4096
+private const val PUSH_PREVIEW_LENGTH = 200
+
+@Serializable
+private data class DeviceRequest(val token: String)
+
+private fun ChatDependencies.notifyInBackground(recipients: Set<String>, data: Map<String, String>) {
+    pushScope.launch { notifier.notify(recipients, data) }
+}
+
+/** Fixed texts per event: the client only says which event happened, never what to display. */
+private fun ChatDependencies.notifyExchangeEvent(exchangeId: Long, uid: String, access: AccessResult.Allowed, event: String) {
+    val who = "@${access.nicknames[uid].orEmpty()}"
+    val book = "«${access.bookTitle}»"
+    val body = when (event) {
+        "created" -> "$who quiere tu libro $book"
+        "confirmed" -> "$who ha confirmado el intercambio de $book"
+        "cancelled" -> "$who ha cancelado el intercambio de $book"
+        "reopen_requested" -> "$who quiere retomar el intercambio de $book"
+        "reopen_accepted" -> "$who ha aceptado retomar el intercambio de $book"
+        "reopen_rejected" -> "$who no quiere retomar el intercambio de $book"
+        else -> return
+    }
+    notifyInBackground(
+        access.participants - uid,
+        mapOf("type" to "exchange", "exchangeId" to exchangeId.toString(), "title" to "Bookintok", "body" to body),
+    )
 }
 
 /** Sends an event to everyone in the exchange's chat and to both participants' inboxes. */

@@ -11,6 +11,7 @@ import com.bookintok.app.data.ChatMessage
 import com.bookintok.app.data.ChatRepository
 import com.bookintok.app.data.DefaultChatRepository
 import com.bookintok.app.data.Exchange
+import com.bookintok.app.data.ExchangeEvent
 import com.bookintok.app.data.ExchangeRepository
 import com.bookintok.app.data.UserRepository
 import com.bookintok.app.ui.common.toUserMessage
@@ -119,7 +120,7 @@ class ChatViewModel @Inject constructor(
             chat.connect(exchangeId).collect { connection ->
                 if (connection == ChatConnection.Connected && announceCreation) {
                     announceCreation = false
-                    chat.notifyExchangeChanged(exchangeId)
+                    chat.notifyExchangeChanged(exchangeId, ExchangeEvent.CREATED)
                 }
                 if (connection == ChatConnection.ExchangeChanged) {
                     // The other participant confirmed or cancelled: reload it from the API
@@ -144,20 +145,22 @@ class ChatViewModel @Inject constructor(
 
     fun requestReopen() = launchCatching {
         exchanges.requestReopen(exchangeId)
-        chat.notifyExchangeChanged(exchangeId)
+        chat.notifyExchangeChanged(exchangeId, ExchangeEvent.REOPEN_REQUESTED)
         local.update { it.copy(notice = "Le hemos pedido a @${state.value.counterpart?.nickname.orEmpty()} retomar el intercambio") }
     }
 
     fun acceptReopen() = launchCatching {
         exchanges.acceptReopen(exchangeId)
-        chat.notifyExchangeChanged(exchangeId)
+        chat.notifyExchangeChanged(exchangeId, ExchangeEvent.REOPEN_ACCEPTED)
         local.update { it.copy(notice = "Intercambio retomado: ya podéis volver a escribir") }
     }
 
     /** Rejects the other participant's request, or withdraws one's own. */
     fun clearReopen() = launchCatching {
+        val rejecting = state.value.reopenAskedByOther
         exchanges.clearReopenRequest(exchangeId)
-        chat.notifyExchangeChanged(exchangeId)
+        // Withdrawing one's own request needs no notification; rejecting the other's does
+        chat.notifyExchangeChanged(exchangeId, if (rejecting) ExchangeEvent.REOPEN_REJECTED else null)
     }
 
     fun onDraft(value: String) = local.update { it.copy(draft = value) }
@@ -178,12 +181,12 @@ class ChatViewModel @Inject constructor(
 
     fun confirm() = launchCatching {
         exchanges.confirm(exchangeId)
-        chat.notifyExchangeChanged(exchangeId)
+        chat.notifyExchangeChanged(exchangeId, ExchangeEvent.CONFIRMED)
     }
 
     fun cancel() = launchCatching {
         exchanges.cancel(exchangeId)
-        chat.notifyExchangeChanged(exchangeId)
+        chat.notifyExchangeChanged(exchangeId, ExchangeEvent.CANCELLED)
     }
 
     fun deleteMessage(messageId: String) = launchCatching { chat.deleteMessage(exchangeId, messageId) }

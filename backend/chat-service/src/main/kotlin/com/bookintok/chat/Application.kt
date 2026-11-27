@@ -8,7 +8,14 @@ import com.bookintok.chat.exchange.UpstreamUnavailableException
 import com.bookintok.chat.message.MessageRepository
 import com.bookintok.chat.message.MongoMessageRepository
 import com.bookintok.chat.routes.ChatRooms
+import com.bookintok.chat.push.DeviceRepository
+import com.bookintok.chat.push.MongoDeviceRepository
+import com.bookintok.chat.push.Notifier
+import com.bookintok.chat.push.PushSender
 import com.bookintok.chat.routes.Inboxes
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import com.bookintok.chat.routes.chatRoutes
 import com.mongodb.kotlin.client.coroutine.MongoClient
 import io.ktor.client.HttpClient
@@ -40,7 +47,22 @@ class ChatDependencies(
     val messages: MessageRepository,
     val rooms: ChatRooms = ChatRooms(),
     val inboxes: Inboxes = Inboxes(),
-)
+    val devices: DeviceRepository = NoDevices,
+    val push: PushSender = PushSender.Disabled,
+) {
+    /** Only users without the app open get a push notification: the others see it live. */
+    val notifier = Notifier(devices, push, isOnline = { inboxes.connectionCount(it) > 0 })
+
+    /** Notifications are sent in the background so a slow FCM call never delays the chat. */
+    val pushScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+}
+
+private object NoDevices : DeviceRepository {
+    override suspend fun register(uid: String, token: String) = Unit
+    override suspend fun unregister(uid: String, token: String) = Unit
+    override suspend fun tokensOf(uid: String) = emptyList<String>()
+    override suspend fun remove(tokens: Collection<String>) = Unit
+}
 
 val ChatJson = Json {
     ignoreUnknownKeys = true
@@ -53,12 +75,18 @@ fun main() {
 
     val mongo = MongoClient.create(env["MONGO_URI"] ?: "mongodb://localhost:27017")
     val messages = MongoMessageRepository(mongo.getDatabase(env["MONGO_DATABASE"] ?: "bookintok_chat"))
-    runBlocking { messages.ensureIndexes() }
+    val devices = MongoDeviceRepository(mongo.getDatabase(env["MONGO_DATABASE"] ?: "bookintok_chat"))
+    runBlocking {
+        messages.ensureIndexes()
+        devices.ensureIndexes()
+    }
 
     val dependencies = ChatDependencies(
         tokenVerification = TokenVerification.Firebase(projectId = required("FIREBASE_PROJECT_ID")),
         exchangeAccess = ApiExchangeAccess(HttpClient(CIO), env["API_BASE_URL"] ?: "http://localhost:8080"),
         messages = messages,
+        devices = devices,
+        push = PushSender.fromCredentialsFile(env["FIREBASE_CREDENTIALS_FILE"]),
     )
 
     embeddedServer(Netty, port = env["PORT"]?.toInt() ?: 8081) { module(dependencies) }.start(wait = true)

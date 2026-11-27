@@ -29,9 +29,15 @@ class ApiExchangeAccessTest {
     fun `participant of a pending exchange can write`() = runTest {
         val access = accessWith(
             HttpStatusCode.OK,
-            """{"id": 7, "status": "PENDING", "book": {"id": 1}, "owner": {"uid": "ana"}, "requester": {"uid": "luis"}}""",
+            """{"id": 7, "status": "PENDING", "book": {"id": 1}, "owner": {"uid": "ana", "nickname": "ana_lee"}, "requester": {"uid": "luis"}, "book": {"id": 1, "title": "Dune"}}""",
         )
-        assertEquals(AccessResult.Allowed(open = true, participants = setOf("ana", "luis")), access.check(7, "token-123"))
+        val expected = AccessResult.Allowed(
+            open = true,
+            participants = setOf("ana", "luis"),
+            nicknames = mapOf("ana" to "ana_lee", "luis" to ""),
+            bookTitle = "Dune",
+        )
+        assertEquals(expected, access.check(7, "token-123"))
         assertEquals("Bearer token-123", lastAuthorization)
     }
 

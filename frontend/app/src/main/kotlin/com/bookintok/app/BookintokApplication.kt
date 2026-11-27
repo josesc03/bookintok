@@ -6,6 +6,7 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.request.crossfade
+import com.bookintok.app.push.ChatNotifications
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import dagger.hilt.android.HiltAndroidApp
@@ -16,6 +17,7 @@ class BookintokApplication : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         initFirebase()
+        ChatNotifications.createChannel(this)
     }
 
     /** Images fade in when they load instead of popping in. */
@@ -36,6 +38,7 @@ class BookintokApplication : Application(), SingletonImageLoader.Factory {
             .setProjectId(BuildConfig.FIREBASE_PROJECT_ID)
             .setApplicationId(BuildConfig.FIREBASE_APP_ID)
             .setApiKey(BuildConfig.FIREBASE_API_KEY)
+            .setGcmSenderId(BuildConfig.FIREBASE_SENDER_ID) // needed by Cloud Messaging
             .build()
         FirebaseApp.initializeApp(this, options)
     }
