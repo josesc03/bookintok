@@ -52,6 +52,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -386,11 +387,11 @@ private fun StatusStrip(
     val exchange = state.exchange ?: return
     val nickname = state.counterpart?.nickname.orEmpty()
     AnimatedContent(
-        targetState = StripState(exchange.status, state.iConfirmed, state.canRate, state.reopenAskedByMe, state.reopenAskedByOther),
+        targetState = StripState(exchange.status, state.iConfirmed, state.canRate, state.reopenAskedByMe, state.reopenAskedByOther, exchange.blocked),
         transitionSpec = { (fadeIn() + expandVertically()) togetherWith (fadeOut() + shrinkVertically()) },
         label = "status",
-    ) { (status, iConfirmed, canRate, askedByMe, askedByOther) ->
-        if (askedByOther) {
+    ) { (status, iConfirmed, canRate, askedByMe, askedByOther, blocked) ->
+        if (askedByOther && !blocked) {
             // The other participant wants to resume: this needs an answer, so it gets two buttons
             Surface(color = MaterialTheme.colorScheme.secondaryContainer) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -413,13 +414,17 @@ private fun StatusStrip(
                     ExchangeStatus.PENDING ->
                         if (iConfirmed) "Has confirmado. Falta que @$nickname confirme." else "¿Ya os habéis dado el libro? Confirmadlo los dos."
                     ExchangeStatus.COMPLETED -> "Intercambio completado"
-                    ExchangeStatus.CANCELLED ->
-                        if (askedByMe) "Has pedido retomar el intercambio. Esperando a @$nickname." else "Intercambio cancelado."
+                    ExchangeStatus.CANCELLED -> when {
+                        blocked -> "Intercambio cancelado. Hay un bloqueo entre vosotros, así que no se puede retomar."
+                        askedByMe -> "Has pedido retomar el intercambio. Esperando a @$nickname."
+                        else -> "Intercambio cancelado."
+                    }
                 }
                 Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                 when {
                     status == ExchangeStatus.PENDING && !iConfirmed -> PrimaryButton("Confirmar", onConfirm)
                     status == ExchangeStatus.COMPLETED && canRate -> SecondaryButton("Valorar", onRate, icon = Icons.Default.Star)
+                    status == ExchangeStatus.CANCELLED && blocked -> Unit
                     status == ExchangeStatus.CANCELLED && askedByMe -> GhostButton("Retirar", onClearReopen)
                     status == ExchangeStatus.CANCELLED -> SecondaryButton("Pedir retomar", onRequestReopen)
                 }
@@ -510,6 +515,7 @@ private data class StripState(
     val canRate: Boolean,
     val reopenAskedByMe: Boolean,
     val reopenAskedByOther: Boolean,
+    val blocked: Boolean,
 )
 
 @Composable
@@ -517,6 +523,10 @@ private fun InputBar(state: ChatUiState, onDraft: (String) -> Unit, onSend: () -
     Surface(color = MaterialTheme.colorScheme.background) {
         Column(Modifier.navigationBarsPadding().imePadding()) {
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+            // Messages can only be sent once the socket is up: show it instead of a silently disabled button
+            AnimatedVisibility(state.canWrite && state.connection == ChatConnection.Connecting) {
+                LinearProgressIndicator(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary)
+            }
             if (state.canWrite) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -526,7 +536,7 @@ private fun InputBar(state: ChatUiState, onDraft: (String) -> Unit, onSend: () -
                     OutlinedTextField(
                         value = state.draft,
                         onValueChange = onDraft,
-                        placeholder = { Text("Mensaje") },
+                        placeholder = { Text(if (state.connection == ChatConnection.Connected) "Mensaje" else "Conectando…") },
                         modifier = Modifier.weight(1f),
                         maxLines = 4,
                         shape = RoundedCornerShape(24.dp),

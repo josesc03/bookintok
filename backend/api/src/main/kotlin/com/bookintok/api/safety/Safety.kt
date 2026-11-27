@@ -128,6 +128,8 @@ class SafetyService(
 
     fun hiddenFrom(uid: String) = blocks.hiddenFrom(uid)
 
+    fun blockedBetween(a: String, b: String) = blocks.blockedBetween(a, b)
+
     fun requireNotBlocked(a: String, b: String) {
         if (blocks.blockedBetween(a, b)) throw ForbiddenException("You cannot interact with this user")
     }

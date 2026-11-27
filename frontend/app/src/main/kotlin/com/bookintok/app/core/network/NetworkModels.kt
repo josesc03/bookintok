@@ -118,6 +118,8 @@ data class ExchangeDto(
     val archived: Boolean = false,
     /** Uid of the participant asking to resume this cancelled exchange, if any. */
     val reopenRequestedBy: String? = null,
+    /** One participant blocked the other: the exchange cannot be resumed. */
+    val blocked: Boolean = false,
 )
 
 /** Asking for a book opens a new chat or returns the one the user already had for it. */

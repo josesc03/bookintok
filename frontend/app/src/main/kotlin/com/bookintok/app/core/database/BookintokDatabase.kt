@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.Flow
  * The UI always reads from here, so past conversations stay readable without connection;
  * the network only refreshes it.
  */
-@Database(entities = [ExchangeEntity::class, MessageEntity::class, ReadMarkerEntity::class], version = 3, exportSchema = true)
+@Database(entities = [ExchangeEntity::class, MessageEntity::class, ReadMarkerEntity::class], version = 4, exportSchema = true)
 abstract class BookintokDatabase : RoomDatabase() {
     abstract fun exchangeDao(): ExchangeDao
 
@@ -45,6 +45,13 @@ abstract class BookintokDatabase : RoomDatabase() {
                 db.execSQL("INSERT OR REPLACE INTO read_markers SELECT id, CAST(strftime('%s','now') AS INTEGER) * 1000 FROM exchanges")
             }
         }
+
+        /** v4: whether the participants blocked each other (hides "resume"). */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE exchanges ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0")
+            }
+        }
     }
 }
 
@@ -66,6 +73,7 @@ data class ExchangeEntity(
     val archived: Boolean = false,
     /** Uid of the participant asking to resume this cancelled exchange. */
     val reopenRequestedBy: String? = null,
+    val blocked: Boolean = false,
 )
 
 /** Up to when (epoch ms, server time of the last message seen) the user has read a chat. */

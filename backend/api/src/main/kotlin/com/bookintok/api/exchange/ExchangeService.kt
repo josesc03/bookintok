@@ -38,7 +38,7 @@ class ExchangeService(
         safety.requireNotBlocked(requesterUid, book.owner.uid)
         exchanges.findFirstByBookIdAndRequesterUidAndStatusInOrderByCreatedAtDesc(
             bookId, requesterUid, listOf(ExchangeStatus.PENDING, ExchangeStatus.CANCELLED),
-        )?.let { return ExchangeRequestResult(it.toResponse(requesterUid), created = false) }
+        )?.let { return ExchangeRequestResult(it.response(requesterUid), created = false) }
         if (book.status != BookStatus.AVAILABLE) throw ConflictException("The book is no longer available")
 
         val exchange = exchanges.save(
@@ -50,16 +50,16 @@ class ExchangeService(
             ),
         )
         log.info("Exchange {} requested for book {}", exchange.id, bookId)
-        return ExchangeRequestResult(exchange.toResponse(requesterUid), created = true)
+        return ExchangeRequestResult(exchange.response(requesterUid), created = true)
     }
 
     fun findForUser(uid: String, status: ExchangeStatus?, pageable: Pageable): PageResponse<ExchangeResponse> =
-        PageResponse.of(exchanges.findForUser(uid, status, pageable)) { it.toResponse(uid) }
+        PageResponse.of(exchanges.findForUser(uid, status, pageable)) { it.response(uid) }
 
     fun findById(id: Long, uid: String): ExchangeResponse {
         val exchange = getExchange(id)
         exchange.requireParticipant(uid)
-        return exchange.toResponse(uid)
+        return exchange.response(uid)
     }
 
     /**
@@ -78,14 +78,14 @@ class ExchangeService(
                 .forEach { it.discard(now) }
             log.info("Exchange {} completed", id)
         }
-        return exchange.toResponse(uid)
+        return exchange.response(uid)
     }
 
     @Transactional
     fun cancel(id: Long, uid: String): ExchangeResponse {
         val exchange = getExchange(id)
         exchange.cancel(uid, Instant.now(clock))
-        return exchange.toResponse(uid)
+        return exchange.response(uid)
     }
 
     @Transactional
@@ -94,7 +94,7 @@ class ExchangeService(
         exchange.requireParticipant(uid)
         requireReopenable(exchange)
         exchange.requestReopen(uid, Instant.now(clock))
-        return exchange.toResponse(uid)
+        return exchange.response(uid)
     }
 
     @Transactional
@@ -104,15 +104,18 @@ class ExchangeService(
         requireReopenable(exchange)
         exchange.acceptReopen(uid, Instant.now(clock))
         log.info("Exchange {} resumed", id)
-        return exchange.toResponse(uid)
+        return exchange.response(uid)
     }
 
     @Transactional
     fun clearReopenRequest(id: Long, uid: String): ExchangeResponse {
         val exchange = getExchange(id)
         exchange.clearReopenRequest(uid, Instant.now(clock))
-        return exchange.toResponse(uid)
+        return exchange.response(uid)
     }
+
+    private fun Exchange.response(viewerUid: String) =
+        toResponse(viewerUid, blocked = safety.blockedBetween(owner.uid, requester.uid))
 
     private fun requireReopenable(exchange: Exchange) {
         safety.requireNotBlocked(exchange.owner.uid, exchange.requester.uid)
@@ -128,7 +131,7 @@ class ExchangeService(
     fun setArchived(id: Long, uid: String, archived: Boolean): ExchangeResponse {
         val exchange = getExchange(id)
         exchange.setArchived(uid, archived)
-        return exchange.toResponse(uid)
+        return exchange.response(uid)
     }
 
     private fun getExchange(id: Long): Exchange =

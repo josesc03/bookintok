@@ -66,7 +66,7 @@ object AppModule {
     @Singleton
     fun database(@ApplicationContext context: Context): BookintokDatabase =
         Room.databaseBuilder(context, BookintokDatabase::class.java, "bookintok.db")
-            .addMigrations(BookintokDatabase.MIGRATION_1_2, BookintokDatabase.MIGRATION_2_3)
+            .addMigrations(BookintokDatabase.MIGRATION_1_2, BookintokDatabase.MIGRATION_2_3, BookintokDatabase.MIGRATION_3_4)
             .build()
 
     @Provides

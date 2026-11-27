@@ -21,7 +21,11 @@ class SafetyApiTest : IntegrationTest() {
 
         putAs("owner", "/api/v1/users/me/blocks/reader").andExpect { status { isNoContent() } }
 
-        getAs("reader", "/api/v1/exchanges/$exchangeId").andExpect { jsonPath("$.status") { value("CANCELLED") } }
+        getAs("reader", "/api/v1/exchanges/$exchangeId").andExpect {
+            jsonPath("$.status") { value("CANCELLED") }
+            // The app hides "resume" for blocked chats, on both sides
+            jsonPath("$.blocked") { value(true) }
+        }
         getAs("reader", "/api/v1/books").andExpect { jsonPath("$.totalElements") { value(0) } }
         postAs("reader", "/api/v1/exchanges/$exchangeId/reopen-request").andExpect { status { isForbidden() } }
         postAs("reader", "/api/v1/books/${createBook("owner", title = "Otro")}/exchanges").andExpect { status { isForbidden() } }
@@ -35,6 +39,8 @@ class SafetyApiTest : IntegrationTest() {
 
         deleteAs("reader", "/api/v1/users/me/blocks/owner").andExpect { status { isNoContent() } }
         getAs("reader", "/api/v1/books").andExpect { jsonPath("$.totalElements") { value(1) } }
+        val exchangeId = requestExchange(bookId, "reader")
+        getAs("owner", "/api/v1/exchanges/$exchangeId").andExpect { jsonPath("$.blocked") { value(false) } }
     }
 
     @Test

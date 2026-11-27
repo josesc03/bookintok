@@ -18,12 +18,14 @@ data class ExchangeResponse(
     val archived: Boolean,
     /** Uid of the participant asking to resume this cancelled exchange, if any. */
     val reopenRequestedBy: String?,
+    /** One participant blocked the other: the exchange cannot be resumed. */
+    val blocked: Boolean = false,
 )
 
 /** Result of asking for a book: the chat that already existed for it, or a new one. */
 data class ExchangeRequestResult(val exchange: ExchangeResponse, val created: Boolean)
 
-fun Exchange.toResponse(viewerUid: String) = ExchangeResponse(
+fun Exchange.toResponse(viewerUid: String, blocked: Boolean = false) = ExchangeResponse(
     id = requireNotNull(id),
     status = status,
     book = ExchangeBook(requireNotNull(book.id), book.title, book.imageUrl()),
@@ -33,4 +35,5 @@ fun Exchange.toResponse(viewerUid: String) = ExchangeResponse(
     updatedAt = updatedAt,
     archived = isArchivedFor(viewerUid),
     reopenRequestedBy = reopenRequestedBy,
+    blocked = blocked,
 )
