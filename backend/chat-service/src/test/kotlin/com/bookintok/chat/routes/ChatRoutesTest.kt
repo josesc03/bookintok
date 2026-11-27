@@ -150,6 +150,21 @@ class ChatRoutesTest {
     }
 
     @Test
+    fun `exchange changes are announced to the other participant, even on closed exchanges`() = chatTest {
+        val client = wsClient()
+        client.webSocket("/ws/exchanges/$closedExchange", request = { bearerAuth(TestTokens.forUser("owner")) }) {
+            val ownerSession = this
+            client.webSocket("/ws/exchanges/$closedExchange", request = { bearerAuth(TestTokens.forUser("reader")) }) {
+                awaitConnections(closedExchange, 2)
+                send(Frame.Text("""{"type": "exchange_changed"}"""))
+                val event = assertIs<ServerEvent.ExchangeChanged>(receiveEvent(ownerSession.incoming))
+                assertEquals(closedExchange, event.exchangeId)
+            }
+        }
+        assertEquals(0, messages.history(closedExchange, null, 10).size)
+    }
+
+    @Test
     fun `empty messages are rejected`() = chatTest {
         wsClient().webSocket("/ws/exchanges/$openExchange", request = { bearerAuth(TestTokens.forUser("owner")) }) {
             send(Frame.Text("""{"content": "   "}"""))

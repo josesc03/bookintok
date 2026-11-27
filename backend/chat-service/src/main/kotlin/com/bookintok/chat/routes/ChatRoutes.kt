@@ -97,7 +97,11 @@ private suspend fun DefaultWebSocketServerSession.handleIncoming(
     } catch (_: IllegalArgumentException) {
         return sendEvent(ServerEvent.Error("Invalid message format"))
     }
-    val content = request.content.trim()
+    if (request.isExchangeChanged) {
+        deps.rooms.broadcast(exchangeId, ChatJson.encodeToString<ServerEvent>(ServerEvent.ExchangeChanged(exchangeId)))
+        return
+    }
+    val content = request.content?.trim().orEmpty()
     when {
         !exchangeOpen -> sendEvent(ServerEvent.Error("This exchange is closed: the chat is read-only"))
         content.isEmpty() -> sendEvent(ServerEvent.Error("Message is empty"))

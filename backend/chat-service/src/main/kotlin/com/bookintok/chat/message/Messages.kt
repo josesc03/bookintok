@@ -35,9 +35,18 @@ data class MessageDto(
 
 fun ChatMessage.toDto() = MessageDto(id, exchangeId, senderUid, content, sentAt.toString())
 
-/** What a client sends through the WebSocket. */
+/**
+ * What a client sends through the WebSocket: a chat message (`{"content": "..."}`) or
+ * `{"type": "exchange_changed"}` after confirming or cancelling the exchange through the API.
+ */
 @Serializable
-data class OutgoingMessageRequest(val content: String)
+data class OutgoingMessageRequest(val content: String? = null, val type: String? = null) {
+    val isExchangeChanged get() = type == EXCHANGE_CHANGED
+
+    companion object {
+        const val EXCHANGE_CHANGED = "exchange_changed"
+    }
+}
 
 /** What the server pushes through the WebSocket; the `type` field tells them apart. */
 @Serializable
@@ -49,4 +58,12 @@ sealed interface ServerEvent {
     @Serializable
     @SerialName("error")
     data class Error(val reason: String) : ServerEvent
+
+    /**
+     * The exchange was confirmed or cancelled. It carries no data on purpose: clients reload the
+     * exchange from the API, which is the only source of truth, so a client cannot fake a status.
+     */
+    @Serializable
+    @SerialName("exchange_changed")
+    data class ExchangeChanged(val exchangeId: Long) : ServerEvent
 }
