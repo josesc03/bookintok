@@ -148,7 +148,7 @@ data class MessageDto(
 )
 
 @Serializable
-data class OutgoingMessage(val content: String)
+data class OutgoingMessage(val content: String? = null, val type: String? = null)
 
 @Serializable
 sealed interface ServerEvent {
@@ -159,4 +159,9 @@ sealed interface ServerEvent {
     @Serializable
     @SerialName("error")
     data class Error(val reason: String) : ServerEvent
+
+    /** The other participant confirmed or cancelled: reload the exchange from the API. */
+    @Serializable
+    @SerialName("exchange_changed")
+    data class ExchangeChanged(val exchangeId: Long) : ServerEvent
 }

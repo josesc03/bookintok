@@ -105,7 +105,7 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
             }
         }
         when (state.connection) {
-            ChatConnection.Disconnected -> InfoBanner("Sin conexión: reconectando…")
+            ChatConnection.Disconnected -> InfoBanner("Sin conexión: mostrando los mensajes guardados. Reconectando…")
             ChatConnection.Connecting -> InfoBanner("Conectando…")
             else -> Unit
         }
@@ -116,7 +116,7 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
             modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            if (state.canLoadOlder && state.messages.isNotEmpty()) {
+            if (state.showLoadOlder) {
                 item { GhostButton("Ver mensajes anteriores", viewModel::loadOlder) }
             }
             items(state.messages, key = { it.id }) { message -> MessageBubble(message, mine = message.senderUid == state.myUid) }

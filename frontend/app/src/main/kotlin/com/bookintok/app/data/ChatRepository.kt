@@ -37,6 +37,9 @@ sealed interface ChatConnection {
     /** Offline: cached messages are still shown, a reconnection is scheduled. */
     data object Disconnected : ChatConnection
 
+    /** The other participant confirmed or cancelled the exchange: it should be reloaded. */
+    data object ExchangeChanged : ChatConnection
+
     /** The server rejected something we sent (closed exchange, empty message...). */
     data class Rejected(val reason: String) : ChatConnection
 }
@@ -60,6 +63,9 @@ interface ChatRepository {
     fun connect(exchangeId: Long): Flow<ChatConnection>
 
     suspend fun send(exchangeId: Long, content: String)
+
+    /** Tells the other participant that the exchange changed (best effort: ignored when offline). */
+    suspend fun notifyExchangeChanged(exchangeId: Long)
 }
 
 @Singleton
@@ -73,7 +79,7 @@ class DefaultChatRepository @Inject constructor(
 
     /** ws://host:port → http://host:port (wss → https) for the REST history endpoint. */
     private val httpBaseUrl = chatBaseUrl.replaceFirst("ws", "http")
-    private val outgoing = ConcurrentHashMap<Long, Channel<String>>()
+    private val outgoing = ConcurrentHashMap<Long, Channel<OutgoingMessage>>()
 
     override fun messages(exchangeId: Long) = dao.observe(exchangeId).map { list -> list.map { it.toModel() } }
 
@@ -102,7 +108,7 @@ class DefaultChatRepository @Inject constructor(
         var attempt = 0
         while (true) {
             send(ChatConnection.Connecting)
-            val queue = Channel<String>(Channel.BUFFERED)
+            val queue = Channel<OutgoingMessage>(Channel.BUFFERED)
             outgoing[exchangeId] = queue
             try {
                 val token = tokens.idToken()
@@ -110,13 +116,14 @@ class DefaultChatRepository @Inject constructor(
                     attempt = 0
                     this@channelFlow.send(ChatConnection.Connected)
                     val sender = launch {
-                        for (text in queue) send(Frame.Text(json.encodeToString(OutgoingMessage(text))))
+                        for (message in queue) send(Frame.Text(json.encodeToString(message)))
                     }
                     for (frame in incoming) {
                         if (frame !is Frame.Text) continue
                         when (val event = json.decodeFromString<ServerEvent>(frame.readText())) {
                             is ServerEvent.NewMessage -> dao.upsert(listOf(event.message.toEntity()))
                             is ServerEvent.Error -> this@channelFlow.send(ChatConnection.Rejected(event.reason))
+                            is ServerEvent.ExchangeChanged -> this@channelFlow.send(ChatConnection.ExchangeChanged)
                         }
                     }
                     sender.cancel()
@@ -136,7 +143,11 @@ class DefaultChatRepository @Inject constructor(
 
     override suspend fun send(exchangeId: Long, content: String) {
         val queue = outgoing[exchangeId] ?: throw NotConnectedException()
-        queue.send(content)
+        queue.send(OutgoingMessage(content = content))
+    }
+
+    override suspend fun notifyExchangeChanged(exchangeId: Long) {
+        outgoing[exchangeId]?.send(OutgoingMessage(type = "exchange_changed"))
     }
 
     companion object {

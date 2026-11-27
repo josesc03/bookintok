@@ -9,6 +9,7 @@ import com.bookintok.app.core.network.ExchangeStatus
 import com.bookintok.app.data.ChatConnection
 import com.bookintok.app.data.ChatMessage
 import com.bookintok.app.data.ChatRepository
+import com.bookintok.app.data.DefaultChatRepository
 import com.bookintok.app.data.Exchange
 import com.bookintok.app.data.ExchangeRepository
 import com.bookintok.app.data.UserRepository
@@ -38,6 +39,9 @@ data class ChatUiState(
     val canSend get() = exchange?.isOpen == true && connection == ChatConnection.Connected && draft.isNotBlank()
     val iConfirmed get() = exchange?.participant(myUid)?.confirmed == true
     val canRate get() = exchange?.status == ExchangeStatus.COMPLETED && !rated
+
+    /** Older messages can only exist once a full page has been loaded. */
+    val showLoadOlder get() = canLoadOlder && messages.size >= DefaultChatRepository.PAGE_SIZE
 }
 
 /**
@@ -65,12 +69,17 @@ class ChatViewModel @Inject constructor(
                 exchanges.refresh(exchangeId)
                 chat.refresh(exchangeId)
             } catch (e: Exception) {
+                // Offline: the cached messages are shown and the connection banner says so
                 if (e is CancellationException) throw e
-                local.update { it.copy(notice = "Sin conexión: mostrando los mensajes guardados") }
             }
         }
         viewModelScope.launch {
             chat.connect(exchangeId).collect { connection ->
+                if (connection == ChatConnection.ExchangeChanged) {
+                    // The other participant confirmed or cancelled: reload it from the API
+                    launch { runCatching { exchanges.refresh(exchangeId) } }
+                    return@collect
+                }
                 local.update {
                     when (connection) {
                         is ChatConnection.Rejected -> it.copy(notice = connection.reason)
@@ -98,9 +107,15 @@ class ChatViewModel @Inject constructor(
         local.update { it.copy(canLoadOlder = more) }
     }
 
-    fun confirm() = launchCatching { exchanges.confirm(exchangeId) }
+    fun confirm() = launchCatching {
+        exchanges.confirm(exchangeId)
+        chat.notifyExchangeChanged(exchangeId)
+    }
 
-    fun cancel() = launchCatching { exchanges.cancel(exchangeId) }
+    fun cancel() = launchCatching {
+        exchanges.cancel(exchangeId)
+        chat.notifyExchangeChanged(exchangeId)
+    }
 
     fun rate(score: Int, comment: String?) = launchCatching {
         val exchange = state.value.exchange ?: return@launchCatching

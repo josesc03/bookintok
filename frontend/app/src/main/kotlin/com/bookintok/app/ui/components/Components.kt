@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -210,21 +211,26 @@ fun apiImageUrl(path: String?): String? = path?.let { if (it.startsWith("http"))
  */
 @Composable
 fun BookCover(title: String, imageUrl: String?, modifier: Modifier = Modifier) {
-    Box(
+    BoxWithConstraints(
         modifier
             .clip(MaterialTheme.shapes.medium)
             .background(coverGradient(title)),
         contentAlignment = Alignment.Center,
     ) {
-        if (imageUrl != null) {
-            AsyncImage(
+        when {
+            imageUrl != null -> AsyncImage(
                 model = apiImageUrl(imageUrl),
                 contentDescription = "Portada de $title",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
-        } else {
-            Text(
+            // Thumbnails are too small for the title: show its first letter instead
+            maxWidth < 88.dp -> Text(
+                title.trim().take(1).uppercase(),
+                style = MaterialTheme.typography.titleLarge,
+                color = BookintokColors.Ink,
+            )
+            else -> Text(
                 title,
                 style = MaterialTheme.typography.titleLarge,
                 color = BookintokColors.Ink,
