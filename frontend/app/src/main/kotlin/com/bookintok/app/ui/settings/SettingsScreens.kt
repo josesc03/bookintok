@@ -219,7 +219,7 @@ private fun Section(title: String) {
     Text(
         title.uppercase(),
         style = MaterialTheme.typography.labelMedium,
-        color = BookintokColors.GreenDeep,
+        color = BookintokColors.Accent,
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 4.dp),
     )
 }
@@ -253,7 +253,7 @@ private fun SwitchRow(icon: ImageVector, title: String, checked: Boolean, onChan
             Switch(
                 checked = checked,
                 onCheckedChange = onChange,
-                colors = SwitchDefaults.colors(checkedTrackColor = BookintokColors.GreenDeep, checkedThumbColor = androidx.compose.ui.graphics.Color.White),
+                colors = SwitchDefaults.colors(checkedTrackColor = BookintokColors.Accent, checkedThumbColor = androidx.compose.ui.graphics.Color.White),
             )
         },
         colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
@@ -399,7 +399,7 @@ fun LicensesScreen(nav: AppNavigator) {
                 ListItem(
                     headlineContent = { Text(library.name) },
                     supportingContent = { Text(library.license) },
-                    trailingContent = fontFile?.let { { Text("Ver", color = BookintokColors.GreenDeep) } },
+                    trailingContent = fontFile?.let { { Text("Ver", color = BookintokColors.Accent) } },
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
                     modifier = if (fontFile != null) Modifier.clickable { shownFont = fontFile } else Modifier,
                 )

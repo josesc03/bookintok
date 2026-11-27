@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
@@ -39,6 +41,11 @@ object BookintokColors {
 
     /** Darker green for small accents on light backgrounds, where the brand green is too light to read. */
     val GreenDeep = Color(0xFF1E6B35)
+
+    /** Green for small text and icons: the deep green on light backgrounds, the brand green on dark ones. */
+    val Accent: Color
+        @Composable @ReadOnlyComposable
+        get() = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Green else GreenDeep
 
     // Status colors are not brand colors: they stay as in Hukly
     val ErrorFg = Color(0xFFB42318)

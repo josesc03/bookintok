@@ -101,7 +101,7 @@ fun ReportSheet(nickname: String, working: Boolean, onDismiss: () -> Unit, onSen
                     RadioButton(
                         selected = reason == option,
                         onClick = { reason = option },
-                        colors = RadioButtonDefaults.colors(selectedColor = BookintokColors.GreenDeep),
+                        colors = RadioButtonDefaults.colors(selectedColor = BookintokColors.Accent),
                     )
                     Text(option.label, style = MaterialTheme.typography.bodyLarge)
                 }

@@ -96,7 +96,7 @@ private fun DistanceFilter(km: Int, onChange: (Int) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Distancia", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            Text("Hasta $km km", style = MaterialTheme.typography.titleMedium, color = BookintokColors.GreenDeep)
+            Text("Hasta $km km", style = MaterialTheme.typography.titleMedium, color = BookintokColors.Accent)
         }
         val steps = DistanceSteps.values
         Slider(
@@ -104,7 +104,7 @@ private fun DistanceFilter(km: Int, onChange: (Int) -> Unit) {
             onValueChange = { onChange(steps[it.toInt().coerceIn(steps.indices)]) },
             valueRange = 0f..steps.lastIndex.toFloat(),
             colors = SliderDefaults.colors(
-                thumbColor = BookintokColors.GreenDeep,
+                thumbColor = BookintokColors.Accent,
                 activeTrackColor = MaterialTheme.colorScheme.primary,
                 inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
             ),

@@ -196,7 +196,7 @@ fun ExchangeListScreen(nav: AppNavigator, viewModel: ExchangeListViewModel = hil
                         TabRowDefaults.PrimaryIndicator(
                             Modifier.tabIndicatorOffset(pager.currentPage, matchContentSize = true),
                             width = androidx.compose.ui.unit.Dp.Unspecified,
-                            color = BookintokColors.GreenDeep,
+                            color = BookintokColors.Accent,
                         )
                     },
                     divider = { HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)) },
@@ -216,7 +216,7 @@ fun ExchangeListScreen(nav: AppNavigator, viewModel: ExchangeListViewModel = hil
                                     if (unreadInTab > 0) UnreadDot()
                                 }
                             },
-                            selectedContentColor = BookintokColors.Ink,
+                            selectedContentColor = MaterialTheme.colorScheme.onSurface,
                             unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -290,7 +290,7 @@ private fun UnreadDot() {
 private fun UnreadCountBadge(count: Int) {
     Box(
         Modifier.defaultMinSize(minWidth = 22.dp, minHeight = 22.dp).clip(CircleShape).background(BookintokColors.Green)
-            .border(1.dp, BookintokColors.GreenDeep, CircleShape).padding(horizontal = 6.dp),
+            .border(1.dp, BookintokColors.Accent, CircleShape).padding(horizontal = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -334,10 +334,10 @@ private fun ConversationRow(item: ConversationItem, onClick: () -> Unit) {
                         item.lastActivity.shortLabel(),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = if (hasUnread) FontWeight.Bold else null,
-                        color = if (hasUnread) BookintokColors.GreenDeep else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (hasUnread) BookintokColors.Accent else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text(item.exchange.bookTitle, style = MaterialTheme.typography.labelMedium, color = BookintokColors.GreenDeep, maxLines = 1)
+                Text(item.exchange.bookTitle, style = MaterialTheme.typography.labelMedium, color = BookintokColors.Accent, maxLines = 1)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         item.lastMessage ?: "Todavía no hay mensajes",

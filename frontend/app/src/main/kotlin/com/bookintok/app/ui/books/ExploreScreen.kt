@@ -216,7 +216,7 @@ fun ExploreScreen(nav: AppNavigator, viewModel: BookListViewModel = hiltViewMode
                     item(span = { GridItemSpan(maxLineSpan) }, key = "more") {
                         Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
                             when {
-                                state.loading -> CircularProgressIndicator(Modifier.size(28.dp), color = BookintokColors.GreenDeep)
+                                state.loading -> CircularProgressIndicator(Modifier.size(28.dp), color = BookintokColors.Accent)
                                 state.hasMore -> GhostButton("Ver más libros", viewModel::loadMore)
                             }
                         }
@@ -265,7 +265,7 @@ private fun SearchBar(search: BookSearch, viewModel: BookListViewModel, onOpenFi
                     modifier = Modifier.size(56.dp),
                     colors = IconButtonDefaults.filledTonalIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        contentColor = BookintokColors.Ink,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                     ),
                 ) { Icon(Icons.Default.Tune, contentDescription = "Filtros") }
             }

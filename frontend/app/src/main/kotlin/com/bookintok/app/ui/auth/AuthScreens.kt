@@ -119,7 +119,7 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
 @Composable
 private fun LegalConsent() {
     var shown by remember { mutableStateOf<LegalDocument?>(null) }
-    val link = SpanStyle(color = BookintokColors.GreenDeep, fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline)
+    val link = SpanStyle(color = BookintokColors.Accent, fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline)
     val text = buildAnnotatedString {
         append("Al continuar aceptas los ")
         withLink(LinkAnnotation.Clickable("terms", TextLinkStyles(link)) { shown = LegalTexts.terms }) { append("Términos de uso") }

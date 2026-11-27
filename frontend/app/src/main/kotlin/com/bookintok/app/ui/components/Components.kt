@@ -166,9 +166,9 @@ fun bookintokFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
     focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
     unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f),
-    focusedBorderColor = BookintokColors.GreenDeep,
+    focusedBorderColor = BookintokColors.Accent,
     cursorColor = MaterialTheme.colorScheme.onSurface,
-    focusedLabelColor = BookintokColors.GreenDeep,
+    focusedLabelColor = BookintokColors.Accent,
 )
 
 @Composable
@@ -450,7 +450,7 @@ fun EmptyState(
         Box(
             Modifier.size(80.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
-        ) { Icon(icon, contentDescription = null, modifier = Modifier.size(36.dp), tint = BookintokColors.GreenDeep) }
+        ) { Icon(icon, contentDescription = null, modifier = Modifier.size(36.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
         Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
         Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         if (actionLabel != null) SecondaryButton(actionLabel, onAction)

@@ -79,7 +79,7 @@ fun ProfileHeader(
         }
         if (locationLabel != null || trailing != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Default.Place, contentDescription = null, modifier = Modifier.size(18.dp), tint = BookintokColors.GreenDeep)
+                Icon(Icons.Default.Place, contentDescription = null, modifier = Modifier.size(18.dp), tint = BookintokColors.Accent)
                 Text(locationLabel ?: "Ubicación sin nombre", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                 trailing?.invoke()
             }
@@ -123,7 +123,7 @@ fun ProfileContent(
                     TabRowDefaults.PrimaryIndicator(
                         Modifier.tabIndicatorOffset(tab, matchContentSize = true),
                         width = Dp.Unspecified,
-                        color = BookintokColors.GreenDeep,
+                        color = BookintokColors.Accent,
                     )
                 },
                 divider = { HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)) },
@@ -133,7 +133,7 @@ fun ProfileContent(
                         selected = tab == index,
                         onClick = { tab = index },
                         text = { Text(title, fontWeight = if (tab == index) FontWeight.SemiBold else FontWeight.Normal) },
-                        selectedContentColor = BookintokColors.Ink,
+                        selectedContentColor = MaterialTheme.colorScheme.onSurface,
                         unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }

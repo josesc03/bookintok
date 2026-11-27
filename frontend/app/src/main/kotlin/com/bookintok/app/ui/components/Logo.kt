@@ -23,7 +23,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.bookintok.app.R
-import com.bookintok.app.ui.theme.BookintokColors
 
 /** The Bookintok symbol: an open book with a location pin. */
 @Composable
@@ -36,7 +35,7 @@ fun LogoSymbol(size: Dp, modifier: Modifier = Modifier) {
 fun Wordmark(modifier: Modifier = Modifier, symbolSize: Dp = 40.dp) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         LogoSymbol(symbolSize)
-        Text("Bookintok", style = MaterialTheme.typography.headlineMedium, color = BookintokColors.Ink)
+        Text("Bookintok", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
     }
 }
 
