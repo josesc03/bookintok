@@ -1,0 +1,11 @@
+{
+  "id": "bookintok",
+  "title": "Bookintok",
+  "category": { "es": "App móvil", "en": "Mobile app" },
+  "description": {
+    "es": "App Android para intercambiar libros con gente cercana, toda en Kotlin: Jetpack Compose, API REST en Spring Boot con PostgreSQL, chat en tiempo real con Ktor y MongoDB, notificaciones push con Firebase y todo arrancado con Docker Compose.",
+    "en": "Android app to swap books with people nearby, all in Kotlin: Jetpack Compose, a Spring Boot REST API on PostgreSQL, real-time chat with Ktor and MongoDB, Firebase push notifications, and the whole stack started with Docker Compose."
+  },
+  "tags": ["Jetpack Compose", "Spring Boot", "Ktor", "PostgreSQL", "MongoDB", "Docker"],
+  "order": 2
+}
